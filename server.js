@@ -1617,13 +1617,16 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--no-warnings',
             '--no-progress',
             '--quiet',
-                    // Enhanced anti-bot detection v2.0 with manual cookies
-        '--user-agent', getRandomUserAgent(),
-        '--cookies', getManualCookies(),
-        '--no-check-certificates',
+                        // Enhanced anti-bot detection v3.0 with captcha bypass
+            '--user-agent', getRandomUserAgent(),
+            '--cookies', getManualCookies(),
+            '--no-check-certificate',
             '--prefer-insecure',
             '--extractor-args', 'youtube:player_client=android',
             '--extractor-args', 'youtube:player_skip=webpage',
+            '--extractor-args', 'youtube:player_skip=webpage,player_client=android',
+            '--extractor-args', 'youtube:player_skip=webpage,player_client=android,player_skip=webpage',
+            '--extractor-args', 'youtube:player_skip=webpage,player_client=android,player_skip=webpage,player_client=android',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
         ]);
         

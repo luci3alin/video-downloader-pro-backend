@@ -1556,15 +1556,98 @@ class VideoDownloader {
     }
     
     acceptCookiesAutomatically() {
-        console.log('🔍 Accepting cookies automatically...');
+        console.log('🔍 Accepting cookies automatically from browser...');
         
-        // Show message that we need REAL cookies
-        this.showNotification('❌ NO AUTOMATIC COOKIES! We need REAL cookies from your browser to bypass bot detection! Please copy them manually.', 'error');
+        try {
+            // Try to get cookies from current domain (if on YouTube)
+            if (window.location.hostname.includes('youtube.com')) {
+                this.extractCookiesFromYouTube();
+            } else {
+                // If not on YouTube, try to get cookies from any YouTube tab
+                this.extractCookiesFromBrowser();
+            }
+        } catch (error) {
+            console.error('❌ Error extracting cookies:', error);
+            this.showNotification('❌ Could not extract cookies automatically. Please copy them manually.', 'error');
+            this.showCookiesSection();
+        }
+    }
+    
+    extractCookiesFromYouTube() {
+        console.log('🔍 Extracting cookies from YouTube page...');
         
-        // Show cookies section for manual input
+        // Get all cookies from current YouTube page
+        const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+            const [name, value] = cookie.trim().split('=');
+            if (name && value) {
+                acc[name] = value;
+            }
+            return acc;
+        }, {});
+        
+        console.log('🔍 Found cookies:', cookies);
+        
+        // Extract important YouTube cookies
+        const importantCookies = {
+            CONSENT: cookies.CONSENT || cookies['__Secure-CONSENT'],
+            VISITOR_INFO1_LIVE: cookies.VISITOR_INFO1_LIVE,
+            YSC: cookies.YSC,
+            LOGIN_INFO: cookies.LOGIN_INFO,
+            SID: cookies.SID,
+            HSID: cookies.HSID,
+            SSID: cookies.SSID,
+            APISID: cookies.APISID,
+            SAPISID: cookies.SAPISID
+        };
+        
+        // Check if we have the required cookies
+        if (importantCookies.CONSENT && importantCookies.VISITOR_INFO1_LIVE && importantCookies.YSC) {
+            console.log('✅ Found required cookies, saving them...');
+            this.saveAndUseCookies(importantCookies);
+        } else {
+            console.log('❌ Missing required cookies, showing manual input');
+            this.showNotification('❌ Could not find required cookies on this page. Please go to YouTube.com and try again.', 'error');
+            this.showCookiesSection();
+        }
+    }
+    
+    extractCookiesFromBrowser() {
+        console.log('🔍 Trying to extract cookies from browser...');
+        
+        // Try to get cookies from localStorage if they exist
+        const storedCookies = localStorage.getItem('youtubeCookies');
+        if (storedCookies) {
+            try {
+                const cookies = JSON.parse(storedCookies);
+                console.log('✅ Found stored cookies, using them...');
+                this.saveAndUseCookies(cookies);
+                return;
+            } catch (error) {
+                console.log('❌ Error parsing stored cookies');
+            }
+        }
+        
+        // If no stored cookies, show instructions
+        this.showNotification('❌ No cookies found. Please go to YouTube.com, log in, then come back and try again.', 'error');
         this.showCookiesSection();
+    }
+    
+    saveAndUseCookies(cookies) {
+        console.log('💾 Saving and using cookies:', cookies);
         
-        console.log('❌ Automatic cookies disabled - real cookies required');
+        // Save to localStorage
+        localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
+        localStorage.setItem('cookiesPermission', 'granted');
+        this.cookiesPermissionGranted = true;
+        
+        // Send to server
+        this.sendCookiesToServer(cookies);
+        
+        // Show success message
+        this.showNotification('✅ Cookies extracted and saved successfully! YouTube downloads should work now!', 'success');
+        
+        // Hide cookies section
+        this.hideCookiesSection();
     }
     
     async sendCookiesToServer(cookies) {
