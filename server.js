@@ -41,32 +41,35 @@ function getRandomUserAgent() {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
+// Global variable to store user cookies
+let userCookies = {
+    CONSENT: 'YES+cb.20241231-19-p0.en+FX+425',
+    VISITOR_INFO1_LIVE: 'v' + Math.random().toString(36).substring(2, 13),
+    YSC: Math.random().toString(36).substring(2, 17)
+};
+
 // Function to get manual YouTube cookies from frontend
 function getManualCookies() {
     // Create a temporary cookies file for yt-dlp
     const fs = require('fs');
     const cookieFile = './youtube_cookies.txt';
     
-    // Default cookies if none provided
-    const defaultCookies = {
-        CONSENT: 'YES+cb.20241231-19-p0.en+FX+425',
-        VISITOR_INFO1_LIVE: 'v' + Math.random().toString(36).substring(2, 13),
-        YSC: Math.random().toString(36).substring(2, 17)
-    };
+    // Use user cookies if available, otherwise use defaults
+    const cookiesToUse = userCookies;
     
     // Create Netscape format cookies file
     const netscapeCookies = `# Netscape HTTP Cookie File
 # This file contains YouTube cookies for authentication
-.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${defaultCookies.CONSENT}
-.youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${defaultCookies.VISITOR_INFO1_LIVE}
-.youtube.com	TRUE	/	FALSE	1735689600	YSC	${defaultCookies.YSC}
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${cookiesToUse.CONSENT}
+.youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${cookiesToUse.VISITOR_INFO1_LIVE}
+.youtube.com	TRUE	/	FALSE	1735689600	YSC	${cookiesToUse.YSC}
 .youtube.com	TRUE	/	FALSE	1735689600	GPS	1
 .youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
 `;
     
     try {
         fs.writeFileSync(cookieFile, netscapeCookies);
-        console.log('✅ Created YouTube cookies file with default values');
+        console.log('✅ Created YouTube cookies file with user values');
         return cookieFile;
     } catch (error) {
         console.error('⚠️ Failed to write cookies file:', error.message);
@@ -164,6 +167,41 @@ app.use(express.static(__dirname, {
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {
     res.status(204).end(); // No content for favicon
+});
+
+// Endpoint to update cookies from frontend
+app.post('/api/update-cookies', (req, res) => {
+    try {
+        const { cookies } = req.body;
+        
+        if (!cookies || !cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid cookies format' 
+            });
+        }
+        
+        // Update global user cookies
+        userCookies = {
+            CONSENT: cookies.CONSENT,
+            VISITOR_INFO1_LIVE: cookies.VISITOR_INFO1_LIVE,
+            YSC: cookies.YSC
+        };
+        
+        console.log('✅ Cookies updated from frontend:', userCookies);
+        
+        res.json({ 
+            success: true, 
+            message: 'Cookies updated successfully' 
+        });
+        
+    } catch (error) {
+        console.error('❌ Error updating cookies:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
 });
 
 // Routes

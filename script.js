@@ -1,21 +1,24 @@
 // Video Downloader Pro - Main JavaScript File
 
 class VideoDownloader {
-    constructor() {
+        constructor() {
         this.initializeEventListeners();
         this.currentUrl = '';
         this.downloadProgress = 0;
-        
+
         // Check if cookies permission was already granted
         this.cookiesPermissionGranted = localStorage.getItem('cookiesPermission') === 'granted';
-        
+
         // Initialize platform attributes after DOM is loaded
         setTimeout(() => {
             this.initializePlatformAttributes();
         }, 100);
         
-        // Show cookies modal if permission not granted
-        if (!this.cookiesPermissionGranted) {
+        // Initialize reset cookies button
+        this.initializeResetCookiesButton();
+
+        // Show cookies modal if permission not granted OR if cookies are missing
+        if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
             setTimeout(() => {
                 this.showCookiesModal();
             }, 1000); // Show after 1 second
@@ -1455,6 +1458,29 @@ class VideoDownloader {
         }
     }
     
+    initializeResetCookiesButton() {
+        const resetBtn = document.getElementById('resetCookiesBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                this.resetCookies();
+            });
+        }
+    }
+    
+    resetCookies() {
+        // Clear cookies from localStorage
+        localStorage.removeItem('youtubeCookies');
+        localStorage.removeItem('cookiesPermission');
+        
+        // Reset permission flag
+        this.cookiesPermissionGranted = false;
+        
+        // Show cookies modal again
+        this.showCookiesModal();
+        
+        console.log('✅ Cookies reset successfully');
+    }
+    
     saveCookiesPermission() {
         // Get cookie values from inputs
         const consentCookie = document.getElementById('consentCookie').value.trim();
@@ -1477,11 +1503,34 @@ class VideoDownloader {
         localStorage.setItem('cookiesPermission', 'granted');
         this.cookiesPermissionGranted = true;
         
+        // Send cookies to server
+        this.sendCookiesToServer(cookies);
+        
         // Show success message
         this.showCookiesSuccess();
         
         // Hide modal
         this.hideCookiesModal();
+    }
+    
+    async sendCookiesToServer(cookies) {
+        try {
+            const response = await fetch('/api/update-cookies', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cookies })
+            });
+            
+            if (response.ok) {
+                console.log('✅ Cookies sent to server successfully');
+            } else {
+                console.error('❌ Failed to send cookies to server');
+            }
+        } catch (error) {
+            console.error('❌ Error sending cookies to server:', error);
+        }
     }
     
     skipCookiesPermission() {
