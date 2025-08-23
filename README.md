@@ -4,7 +4,14 @@ A powerful video downloader backend with enhanced anti-bot detection capabilitie
 
 ## 🚀 Enhanced Features
 
-### Anti-Bot Detection
+### Anti-Bot Detection v2.0
+- **Cookie-Based Authentication**: Realistic YouTube consent cookies to bypass bot detection
+- **Request Timing Randomization**: 1-4 second random delays to appear more human
+- **Enhanced Browser Headers**: Includes Sec-Ch-Ua, Sec-Ch-Ua-Mobile, and Sec-Ch-Ua-Platform headers
+- **Android Client Emulation**: Uses mobile-like requests to avoid server-side detection
+- **Advanced Header Rotation**: 9 different User-Agent strings including Chrome, Firefox, Edge, and Safari
+
+### Anti-Bot Detection v1.0
 - **Enhanced Headers**: Realistic browser headers including User-Agent, Accept, Accept-Language, DNT, and more
 - **Multiple Download Methods**: Hybrid system with automatic fallback
 - **Cookie Support**: Browser cookie integration for authentication
@@ -27,12 +34,12 @@ A powerful video downloader backend with enhanced anti-bot detection capabilitie
 
 ## 🔧 Technical Implementation
 
-### Enhanced Headers
+### Enhanced Headers v2.0
 ```javascript
 headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'en-US,en;q=0.9,ro;q=0.8',
     'Accept-Encoding': 'gzip, deflate, br',
     'DNT': '1',
     'Connection': 'keep-alive',
@@ -41,16 +48,23 @@ headers: {
     'Sec-Fetch-Mode': 'navigate',
     'Sec-Fetch-Site': 'none',
     'Sec-Fetch-User': '?1',
-    'Cache-Control': 'max-age=0'
+    'Cache-Control': 'max-age=0',
+    'Cookie': 'CONSENT=YES+cb.20231231-07-p0.en+FX+410; Domain=.youtube.com; Path=/',
+    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'X-Requested-With': 'XMLHttpRequest'
 }
 ```
 
-### yt-dlp Enhanced Options
-- `--user-agent`: Custom browser user agent
-- `--add-header`: Multiple custom headers for anti-bot detection
+### yt-dlp Enhanced Options v2.0
+- `--user-agent`: Rotating realistic browser user agents
+- `--add-header Cookie`: YouTube consent cookies for authentication
+- `--add-header Sec-Ch-Ua`: Chrome version and brand headers
+- `--extractor-args youtube:player_client=android`: Android client emulation
+- `--extractor-args youtube:player_skip=webpage`: Skip webpage parsing
 - `--no-check-certificates`: Bypass SSL issues
 - `--prefer-insecure`: Use HTTP when HTTPS fails
-- `--cookies-from-browser`: Browser cookie integration
 
 ## 📊 Current Status
 
@@ -63,8 +77,9 @@ headers: {
 
 ### YouTube Status
 - 🔄 **Analysis**: YouTube Data API v3 (primary) + ytdl-core fallback
-- 🔄 **Download**: ytdl-core (primary) + yt-dlp fallback with enhanced anti-bot detection
-- ⚠️ **Current Issue**: Bot detection blocking some requests (being addressed with enhanced headers)
+- 🔄 **Download**: Enhanced ytdl-core v2.0 (primary) + Enhanced yt-dlp v2.0 fallback
+- 🆕 **v2.0 Features**: Cookie authentication, timing randomization, Android client emulation
+- ⚠️ **Current Issue**: Server-side bot detection on cloud platforms (addressed with v2.0 enhancements)
 
 ## 🚀 Deployment
 
@@ -87,6 +102,17 @@ headers: {
 ├── render.yaml            # Render.com deployment configuration
 ├── README.md              # This file
 └── DEPLOYMENT.md          # Detailed deployment instructions
+```
+
+## 🧪 Testing
+
+### Enhanced Anti-Bot Detection v2.0
+```bash
+# Test the enhanced system locally
+node test-enhanced-v2.js
+
+# Test the basic system
+node test-enhanced-detection.js
 ```
 
 ## 🔍 Debugging
@@ -137,6 +163,6 @@ For issues or questions:
 
 ---
 
-**Last Updated**: Enhanced anti-bot detection implemented
-**Status**: YouTube downloads with enhanced fallback system
-**Next Steps**: Monitor bot detection effectiveness and optimize headers
+**Last Updated**: Enhanced anti-bot detection v2.0 implemented
+**Status**: YouTube downloads with cookie authentication and timing randomization
+**Next Steps**: Deploy v2.0 and monitor cloud platform bot detection bypass

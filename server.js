@@ -21,18 +21,39 @@ const { Vimeo } = require('@vimeo/vimeo');
 // YouTube API Key for fallback (all restrictions removed)
 const YOUTUBE_API_KEY = 'AIzaSyDATZtBCDsSV1Bjb8xNZmQpZBtLhTJ-htk';
 
-// User-Agent rotation for anti-bot detection
+// Enhanced anti-bot detection v2.0 - Cookie-based authentication and timing randomization
+const COOKIES = [
+    'CONSENT=YES+cb.20231231-07-p0.en+FX+410; Domain=.youtube.com; Path=/',
+    'CONSENT=YES+cb.20240101-08-p0.en+FX+410; Domain=.youtube.com; Path=/',
+    'CONSENT=YES+cb.20240102-09-p0.en+FX+410; Domain=.youtube.com; Path=/'
+];
+
+// Enhanced User-Agent rotation with more realistic browsers
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0'
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
 ];
 
 // Function to get random User-Agent
 function getRandomUserAgent() {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+// Function to get random cookie
+function getRandomCookie() {
+    return COOKIES[Math.floor(Math.random() * COOKIES.length)];
+}
+
+// Function to add random delay (anti-bot timing)
+function getRandomDelay() {
+    return Math.floor(Math.random() * 3000) + 1000; // 1-4 seconds
 }
 
 // Function to get realistic headers
@@ -49,6 +70,29 @@ function getRealisticHeaders() {
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
         'Cache-Control': 'max-age=0'
+    };
+}
+
+// Enhanced realistic headers with cookies and timing
+function getEnhancedHeaders() {
+    return {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9,ro;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'Cookie': getRandomCookie(),
+        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'X-Requested-With': 'XMLHttpRequest'
     };
 }
 
@@ -1152,7 +1196,7 @@ async function getYouTubeInfoViaAPI(url) {
         const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${YOUTUBE_API_KEY}&part=snippet,contentDetails,statistics`;
         
         const response = await axios.get(apiUrl, {
-            headers: getRealisticHeaders()
+            headers: getEnhancedHeaders()
         });
         
         if (!response.data.items || response.data.items.length === 0) {
@@ -1227,63 +1271,41 @@ function parseDuration(duration) {
     return hours * 3600 + minutes * 60 + seconds;
 }
 
-// Fast download function using ytdl-core with enhanced anti-bot detection
+// Enhanced ytdl-core with cookie authentication and timing
 async function downloadYouTubeViaYtdlCore(url, quality, format) {
     try {
-        console.log('🔍 Attempting to get YouTube video info via ytdl-core...');
+        console.log('🔍 Enhanced ytdl-core v2.0: Starting with cookie authentication...');
         
-        // Get video info first with enhanced options
+        // Add random delay to avoid bot detection
+        const delay = getRandomDelay();
+        console.log(`⏱️ Adding random delay: ${delay}ms to avoid bot detection`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Get video info with enhanced options
         const info = await ytdl.getInfo(url, {
             requestOptions: {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                    'Cache-Control': 'max-age=0'
-                }
+                headers: getEnhancedHeaders()
             }
         });
         
-        console.log('✅ ytdl-core successfully retrieved video info');
+        console.log('✅ Enhanced ytdl-core successfully retrieved video info');
         
-        // Configure download options based on quality and format
+        // Configure download options with enhanced anti-bot detection
         let downloadOptions = {
             requestOptions: {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                    'Cache-Control': 'max-age=0'
-                }
+                headers: getEnhancedHeaders()
             }
         };
         
         if (format === 'mp3') {
-            // For audio, get highest quality audio
             downloadOptions.quality = 'highestaudio';
             downloadOptions.filter = 'audioonly';
         } else {
-            // For video, select specific quality format
+            // Enhanced quality selection with fallback
             const formats = info.formats;
             let selectedFormat;
             
-            // Find the best format for the requested quality
+            // Enhanced quality mapping with fallbacks
             switch (quality) {
                 case '4K':
                     selectedFormat = formats.find(f => f.height === 2160 && f.hasVideo && f.hasAudio) ||
@@ -1328,31 +1350,26 @@ async function downloadYouTubeViaYtdlCore(url, quality, format) {
                 throw new Error(`No suitable format found for ${quality} quality`);
             }
             
-            console.log(`🎯 Selected format: ${selectedFormat.height}p, size: ${selectedFormat.contentLength || 'unknown'}`);
-            
+            console.log(`🎯 Enhanced ytdl-core selected format: ${selectedFormat.height}p, size: ${selectedFormat.contentLength || 'unknown'}`);
             downloadOptions.format = selectedFormat;
         }
         
-        console.log('🔧 ytdl-core download options configured with enhanced anti-bot detection');
+        console.log('🔧 Enhanced ytdl-core v2.0 download options configured');
         
-        // Create download stream
+        // Create download stream with enhanced options
         const downloadStream = ytdl(url, downloadOptions);
         
-        // Add error handling to prevent server crashes
+        // Enhanced error handling
         downloadStream.on('error', (error) => {
-            console.error('❌ ytdl-core stream error:', error);
+            console.error('❌ Enhanced ytdl-core v2.0 stream error:', error);
         });
         
-        console.log('✅ ytdl-core download stream created successfully');
-        console.log('🔍 ytdl-core DOWNLOAD DEBUG: Stream created successfully');
-        console.log('🔍 ytdl-core DOWNLOAD DEBUG: Options used:', JSON.stringify(downloadOptions));
-        console.log('🔍 ytdl-core DOWNLOAD DEBUG: Stream type:', downloadStream.constructor.name);
-        
+        console.log('✅ Enhanced ytdl-core v2.0 download stream created successfully');
         return downloadStream;
         
     } catch (error) {
-        console.error('❌ ytdl-core failed:', error.message);
-        throw new Error(`ytdl-core download failed: ${error.message}`);
+        console.error('❌ Enhanced ytdl-core v2.0 failed:', error.message);
+        throw new Error(`Enhanced ytdl-core v2.0 download failed: ${error.message}`);
     }
 }
 
@@ -1403,33 +1420,30 @@ async function downloadYouTube(url, quality, format) {
     }
 }
 
-// Fallback download function using yt-dlp with enhanced anti-bot detection
+// Enhanced yt-dlp with cookie authentication and timing
 async function downloadYouTubeViaYtDlp(url, quality, format) {
     try {
-        console.log('🔍 Attempting to download YouTube video via yt-dlp fallback...');
+        console.log('🔍 Enhanced yt-dlp v2.0: Starting with cookie authentication...');
         
-        // Use yt-dlp with dynamic path for cross-platform compatibility
+        // Add random delay to avoid bot detection
+        const delay = getRandomDelay();
+        console.log(`⏱️ Adding random delay: ${delay}ms to avoid bot detection`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
         const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
         console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
-        console.log(`🔧 Platform: ${process.platform}`);
-        console.log(`🔧 YT_DLP_PATH env: ${process.env.YT_DLP_PATH}`);
         
-        // Check if yt-dlp exists
         if (!fs.existsSync(ytDlpPath)) {
-            console.error(`❌ yt-dlp not found at path: ${ytDlpPath}`);
-            throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
+            throw new Error(`yt-dlp executable not found at ${ytDlpPath}`);
         }
         
         const ytdlp = new YTDlpWrap(ytDlpPath);
-         
-        // Enhanced download options with anti-bot detection
-        let formatOption;
         
+        // Enhanced format options with better quality selection
+        let formatOption;
         if (format === 'mp3') {
-            // For audio, use best quality
-            formatOption = 'bestaudio';
+            formatOption = 'bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio';
         } else {
-            // For video, use best available quality for the requested resolution
             switch (quality) {
                 case '4K': formatOption = 'best[height<=2160][ext=mp4]/best[height<=2160]'; break;
                 case '2K': formatOption = 'best[height<=1440][ext=mp4]/best[height<=1440]'; break;
@@ -1442,22 +1456,22 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             }
         }
         
-        console.log('🔧 yt-dlp format option (optimized for speed):', formatOption);
-        console.log('🔧 yt-dlp options configured with enhanced anti-bot detection');
+        console.log('🔧 Enhanced yt-dlp v2.0 format option:', formatOption);
         
-        // Start download with yt-dlp - enhanced with anti-bot detection
+        // Enhanced yt-dlp options with cookie authentication
         const downloadStream = ytdlp.execStream([
             url,
-            '-o', '-', // Output to stdout
+            '-o', '-',
             '-f', formatOption,
-            '--no-playlist', // Ensure single video
-            '--no-warnings', // Reduce output
-            '--no-progress', // Disable progress bar
-            '--quiet', // Minimal output
-            // Enhanced anti-bot detection options
-            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--no-playlist',
+            '--no-warnings',
+            '--no-progress',
+            '--quiet',
+            // Enhanced anti-bot detection v2.0
+            '--user-agent', getRandomUserAgent(),
+            '--add-header', `Cookie:${getRandomCookie()}`,
             '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-            '--add-header', 'Accept-Language:en-US,en;q=0.9',
+            '--add-header', 'Accept-Language:en-US,en;q=0.9,ro;q=0.8',
             '--add-header', 'Accept-Encoding:gzip, deflate, br',
             '--add-header', 'DNT:1',
             '--add-header', 'Connection:keep-alive',
@@ -1467,26 +1481,27 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--add-header', 'Sec-Fetch-Site:none',
             '--add-header', 'Sec-Fetch-User:?1',
             '--add-header', 'Cache-Control:max-age=0',
+            '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            '--add-header', 'Sec-Ch-Ua-Mobile:?0',
+            '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
             // Additional anti-bot options
             '--no-check-certificates',
             '--prefer-insecure',
+            '--extractor-args', 'youtube:player_client=android',
+            '--extractor-args', 'youtube:player_skip=webpage',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
         ]);
         
-        // Add error handling to prevent server crashes
         downloadStream.on('error', (error) => {
-            console.error('❌ Download stream error:', error);
+            console.error('❌ Enhanced yt-dlp v2.0 stream error:', error);
         });
         
-        console.log('🔍 yt-dlp DOWNLOAD DEBUG: Stream created successfully');
-        console.log('🔍 yt-dlp DOWNLOAD DEBUG: Format option used:', formatOption);
-        console.log('🔍 yt-dlp DOWNLOAD DEBUG: Stream type:', downloadStream.constructor.name);
-        console.log('✅ yt-dlp download stream created successfully');
+        console.log('✅ Enhanced yt-dlp v2.0 download stream created successfully');
         return downloadStream;
         
     } catch (error) {
-        console.error('❌ Error downloading YouTube video with yt-dlp:', error);
-        throw new Error(`Failed to download YouTube video: ${error.message}`);
+        console.error('❌ Enhanced yt-dlp v2.0 failed:', error.message);
+        throw new Error(`Enhanced yt-dlp v2.0 download failed: ${error.message}`);
     }
 }
 
@@ -1523,12 +1538,12 @@ async function getYouTubePlaylistInfo(url) {
         try {
             console.log('🔗 Using @distube/ytpl to get playlist info...');
             
-            // Get playlist info using ytpl with realistic headers
-            const playlist = await ytpl(playlistId, {
-                requestOptions: {
-                    headers: getRealisticHeaders()
-                }
-            });
+                         // Get playlist info using ytpl with enhanced headers
+             const playlist = await ytpl(playlistId, {
+                 requestOptions: {
+                     headers: getEnhancedHeaders()
+                 }
+             });
             
             console.log(`✅ @distube/ytpl found ${playlist.items.length} videos in playlist`);
             console.log(`📊 Playlist title: ${playlist.title}`);
@@ -1578,11 +1593,11 @@ async function getYouTubePlaylistInfo(url) {
         try {
             console.log('🌐 Trying web scraping approach...');
             
-            // Scrape the playlist page directly
-            const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
-            const response = await axios.get(playlistUrl, {
-                headers: getRealisticHeaders()
-            });
+                         // Scrape the playlist page directly
+             const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+             const response = await axios.get(playlistUrl, {
+                 headers: getEnhancedHeaders()
+             });
             
             const html = response.data;
             console.log('📄 Playlist page scraped successfully');
