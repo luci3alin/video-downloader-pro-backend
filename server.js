@@ -1482,8 +1482,6 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             throw new Error(`yt-dlp executable not found at ${ytDlpPath}`);
         }
         
-        const ytdlp = new YTDlpWrap(ytDlpPath);
-        
         // Enhanced format options with better quality selection
         let formatOption;
         if (format === 'mp3') {
