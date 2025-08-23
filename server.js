@@ -329,7 +329,7 @@ app.post('/api/download-playlist', async (req, res) => {
                                  console.log(`🥈 Video ${i + 1} - STEP 2: Trying yt-dlp (FALLBACK)...`);
                                  
                                  // Use yt-dlp with dynamic path for cross-platform compatibility
-                                 const ytDlpPath = process.env.YT_DLP_PATH || 'yt-dlp';
+                                 const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
                                  const ytdlp = new YTDlpWrap(ytDlpPath);
                                  
                                  // Configure download options
@@ -508,7 +508,7 @@ async function getPornHubInfo(url) {
             duration: video.duration || 'Unknown',
             thumbnail: video.thumb || video.preview || '',
             qualities: qualities,
-            formats: availableFormats,
+            formats: ['mp4', 'mp3'],
             qualitySizes: qualitySizes,
             note: 'PornHub video detected using specialized library. Download functionality available.',
             videoId: videoId,
@@ -1010,7 +1010,7 @@ async function getYouTubeInfoViaYtdlCore(url) {
 async function getYouTubeInfoViaYtDlp(url) {
     try {
         // Use yt-dlp with dynamic path for cross-platform compatibility
-        const ytDlpPath = process.env.YT_DLP_PATH || 'yt-dlp';
+        const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
         const ytdlp = new YTDlpWrap(ytDlpPath);
         
         // Get video info using yt-dlp
@@ -1347,7 +1347,7 @@ async function downloadYouTube(url, quality, format) {
 async function downloadYouTubeViaYtDlp(url, quality, format) {
     try {
         // Use yt-dlp with dynamic path for cross-platform compatibility
-        const ytDlpPath = process.env.YT_DLP_PATH || 'yt-dlp';
+        const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
         const ytdlp = new YTDlpWrap(ytDlpPath);
          
          // Ultra-fast download options - prioritize speed over quality

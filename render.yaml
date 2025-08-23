@@ -7,6 +7,8 @@ services:
       npm install
       curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
       chmod +x yt-dlp
+      ls -la yt-dlp
+      echo "yt-dlp downloaded and made executable"
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
