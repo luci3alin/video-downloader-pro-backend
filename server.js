@@ -54,13 +54,20 @@ function getManualCookies() {
     const fs = require('fs');
     const cookieFile = './youtube_cookies.txt';
     
-    // Use user cookies if available, otherwise use defaults
+    // Use ONLY real user cookies - no defaults!
     const cookiesToUse = userCookies;
     
-    // Create enhanced Netscape format cookies file with MORE cookies for better authentication
+    // If no real cookies, FAIL - we need real ones!
+    if (!cookiesToUse || !cookiesToUse.CONSENT || !cookiesToUse.VISITOR_INFO1_LIVE || !cookiesToUse.YSC) {
+        console.error('❌ NO REAL COOKIES PROVIDED! YouTube will detect us as a bot!');
+        console.error('❌ Please provide real cookies from your browser!');
+        throw new Error('Real YouTube cookies are required to bypass bot detection');
+    }
+    
+    // Create Netscape format cookies file with ONLY real cookies
     const netscapeCookies = `# Netscape HTTP Cookie File
-# This file contains YouTube cookies for authentication
-# Generated for yt-dlp to bypass bot detection
+# This file contains REAL YouTube cookies for authentication
+# NO FAKE COOKIES - ONLY REAL ONES FROM BROWSER
 .youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${cookiesToUse.CONSENT}
 .youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${cookiesToUse.VISITOR_INFO1_LIVE}
 .youtube.com	TRUE	/	FALSE	1735689600	YSC	${cookiesToUse.YSC}
@@ -194,11 +201,23 @@ app.post('/api/update-cookies', (req, res) => {
             });
         }
         
-        // Update global user cookies
+        // Update global user cookies with ALL available cookies
         userCookies = {
             CONSENT: cookies.CONSENT,
             VISITOR_INFO1_LIVE: cookies.VISITOR_INFO1_LIVE,
-            YSC: cookies.YSC
+            YSC: cookies.YSC,
+            LOGIN_INFO: cookies.LOGIN_INFO || null,
+            SID: cookies.SID || null,
+            HSID: cookies.HSID || null,
+            SSID: cookies.SSID || null,
+            APISID: cookies.APISID || null,
+            SAPISID: cookies.SAPISID || null,
+            SECURE_1PAPISID: cookies.SECURE_1PAPISID || null,
+            SECURE_3PAPISID: cookies.SECURE_3PAPISID || null,
+            SECURE_1PSID: cookies.SECURE_1PSID || null,
+            SECURE_3PSID: cookies.SECURE_3PSID || null,
+            SECURE_1PSIDCC: cookies.SECURE_1PSIDCC || null,
+            SECURE_3PSIDCC: cookies.SECURE_3PSIDCC || null
         };
         
         console.log('✅ Cookies updated from frontend:', userCookies);

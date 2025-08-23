@@ -1519,6 +1519,9 @@ class VideoDownloader {
         const loginInfoCookie = document.getElementById('loginInfoCookie').value.trim();
         const sidCookie = document.getElementById('sidCookie').value.trim();
         const hsidCookie = document.getElementById('hsidCookie').value.trim();
+        const ssidCookie = document.getElementById('ssidCookie').value.trim();
+        const apisidCookie = document.getElementById('apisidCookie').value.trim();
+        const sapisidCookie = document.getElementById('sapisidCookie').value.trim();
         
         if (!consentCookie || !visitorCookie || !yscCookie) {
             alert('Please fill in the required cookie fields (CONSENT, VISITOR_INFO1_LIVE, YSC)');
@@ -1532,7 +1535,10 @@ class VideoDownloader {
             YSC: yscCookie,
             LOGIN_INFO: loginInfoCookie || null,
             SID: sidCookie || null,
-            HSID: hsidCookie || null
+            HSID: hsidCookie || null,
+            SSID: ssidCookie || null,
+            APISID: apisidCookie || null,
+            SAPISID: sapisidCookie || null
         };
         
         localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
@@ -1552,34 +1558,13 @@ class VideoDownloader {
     acceptCookiesAutomatically() {
         console.log('🔍 Accepting cookies automatically...');
         
-        // Generate enhanced default cookies that work better
-        const defaultCookies = {
-            CONSENT: 'YES+cb.20241231-19-p0.en+FX+425',
-            VISITOR_INFO1_LIVE: 'v' + Math.random().toString(36).substring(2, 13),
-            YSC: Math.random().toString(36).substring(2, 17),
-            LOGIN_INFO: 'AFmmF2swRQIhAJ' + Math.random().toString(36).substring(2, 8),
-            SID: 'OQjWNV_' + Math.random().toString(36).substring(2, 15),
-            HSID: 'AbC' + Math.random().toString(36).substring(2, 15),
-            SSID: 'GhI' + Math.random().toString(36).substring(2, 15),
-            APISID: 'MnO' + Math.random().toString(36).substring(2, 15),
-            SAPISID: 'StU' + Math.random().toString(36).substring(2, 15)
-        };
+        // Show message that we need REAL cookies
+        this.showNotification('❌ NO AUTOMATIC COOKIES! We need REAL cookies from your browser to bypass bot detection!', 'error');
         
-        // Save to localStorage
-        localStorage.setItem('youtubeCookies', JSON.stringify(defaultCookies));
-        localStorage.setItem('cookiesPermission', 'granted');
-        this.cookiesPermissionGranted = true;
+        // Show cookies section for manual input
+        this.showCookiesSection();
         
-        // Send to server
-        this.sendCookiesToServer(defaultCookies);
-        
-        // Show success message
-        this.showNotification('✅ Enhanced cookies accepted automatically! YouTube downloads should work better now.', 'success');
-        
-        console.log('✅ Enhanced cookies accepted automatically:', defaultCookies);
-        
-        // Hide cookies section if it's visible
-        this.hideCookiesSection();
+        console.log('❌ Automatic cookies disabled - real cookies required');
     }
     
     async sendCookiesToServer(cookies) {
