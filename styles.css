@@ -1967,6 +1967,32 @@ body {
     box-shadow: 0 8px 25px rgba(230, 126, 34, 0.4);
 }
 
+/* Cookies Modal Responsive */
+@media (max-width: 768px) {
+    .cookies-modal.show {
+        padding: 10px;
+    }
+    
+    .cookies-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .cookies-body {
+        padding: 20px;
+    }
+    
+    .cookies-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .grant-btn, .deny-btn {
+        min-width: 100%;
+        padding: 15px 25px;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
@@ -2299,10 +2325,14 @@ body {
     z-index: 10000;
     animation: fadeIn 0.3s ease;
     overflow: auto;
-    display: flex;
-    align-items: flex-start;
+}
+
+.cookies-modal.show {
+    display: flex !important;
+    align-items: center;
     justify-content: center;
     padding: 20px;
+    box-sizing: border-box;
 }
 
 .cookies-steps {
@@ -2365,13 +2395,12 @@ body {
 
 .cookies-content {
     position: relative;
-    margin: 20px auto;
     background: var(--secondary-bg);
     border-radius: 20px;
     padding: 0;
     max-width: 500px;
     width: 90%;
-    max-height: calc(100vh - 40px);
+    max-height: 80vh;
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: slideIn 0.4s ease;
@@ -2513,6 +2542,10 @@ body {
 
 [data-theme="dark"] .cookies-modal {
     background: rgba(0, 0, 0, 0.9);
+}
+
+[data-theme="dark"] .cookies-modal.show {
+    background: rgba(0, 0, 0, 0.95);
 }
 
 [data-theme="dark"] .cookies-input input {

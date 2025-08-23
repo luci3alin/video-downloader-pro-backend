@@ -1429,6 +1429,7 @@ class VideoDownloader {
         const modal = document.getElementById('cookiesModal');
         if (modal) {
             modal.style.display = 'block';
+            modal.classList.add('show');
             document.body.style.overflow = 'hidden';
             
             // Add event listeners for buttons
@@ -1438,6 +1439,7 @@ class VideoDownloader {
             console.log('🔍 Cookies modal displayed');
             console.log('🔍 Modal element:', modal);
             console.log('🔍 Modal display style:', modal.style.display);
+            console.log('🔍 Modal classes:', modal.className);
         } else {
             console.error('❌ Cookies modal not found!');
         }
@@ -1447,6 +1449,7 @@ class VideoDownloader {
         const modal = document.getElementById('cookiesModal');
         if (modal) {
             modal.style.display = 'none';
+            modal.classList.remove('show');
             document.body.style.overflow = 'auto';
         }
     }
