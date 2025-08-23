@@ -32,41 +32,45 @@
             </div>
         </header>
 
-        <!-- Cookies Permission Modal -->
-        <div id="cookiesModal" class="cookies-modal">
-            <div class="cookies-content">
-                <div class="cookies-header">
-                    <i class="fas fa-shield-alt"></i>
-                    <h2>Cookies Permission Required</h2>
+        <!-- Cookies Section - Simple and Direct -->
+        <div id="cookiesSection" class="cookies-section" style="display: none;">
+            <div class="cookies-container">
+                <h3><i class="fas fa-shield-alt"></i> YouTube Cookies Setup</h3>
+                <p>To download YouTube videos, we need your YouTube cookies to bypass bot detection.</p>
+                
+                <div class="cookies-instructions">
+                    <h4>How to get cookies:</h4>
+                    <ol>
+                        <li>Go to <a href="https://youtube.com" target="_blank">YouTube.com</a> in your browser</li>
+                        <li>Make sure you're logged in</li>
+                        <li>Press F12 to open Developer Tools</li>
+                        <li>Go to Application/Storage → Cookies → youtube.com</li>
+                        <li>Copy the value of these cookies: <code>CONSENT</code>, <code>VISITOR_INFO1_LIVE</code>, <code>YSC</code></li>
+                    </ol>
                 </div>
-                <div class="cookies-body">
-                    <p>To download YouTube videos, we need your YouTube cookies to bypass bot detection. Please follow these steps:</p>
-                    <div class="cookies-steps">
-                        <h4>How to get cookies:</h4>
-                        <ol>
-                            <li>Go to <a href="https://youtube.com" target="_blank">YouTube.com</a> in your browser</li>
-                            <li>Make sure you're logged in</li>
-                            <li>Press F12 to open Developer Tools</li>
-                            <li>Go to Application/Storage → Cookies → youtube.com</li>
-                            <li>Copy the value of these cookies: <code>CONSENT</code>, <code>VISITOR_INFO1_LIVE</code>, <code>YSC</code></li>
-                        </ol>
-                    </div>
-                    <div class="cookies-input">
+                
+                <div class="cookies-form">
+                    <div class="input-group">
                         <label for="consentCookie">CONSENT Cookie:</label>
                         <input type="text" id="consentCookie" placeholder="YES+cb.20241231-19-p0.en+FX+425">
-                        
+                    </div>
+                    
+                    <div class="input-group">
                         <label for="visitorCookie">VISITOR_INFO1_LIVE Cookie:</label>
                         <input type="text" id="visitorCookie" placeholder="v1234567890">
-                        
+                    </div>
+                    
+                    <div class="input-group">
                         <label for="yscCookie">YSC Cookie:</label>
                         <input type="text" id="yscCookie" placeholder="1234567890abcdef">
                     </div>
-                    <div class="cookies-actions">
-                        <button id="saveCookiesBtn" class="grant-btn">
+                    
+                    <div class="cookies-buttons">
+                        <button id="saveCookiesBtn" class="save-cookies-btn">
                             <i class="fas fa-save"></i>
                             Save Cookies
                         </button>
-                        <button id="skipCookiesBtn" class="deny-btn">
+                        <button id="skipCookiesBtn" class="skip-cookies-btn">
                             <i class="fas fa-times"></i>
                             Skip for Now
                         </button>

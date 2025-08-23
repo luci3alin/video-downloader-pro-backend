@@ -17,11 +17,11 @@ class VideoDownloader {
         // Initialize reset cookies button
         this.initializeResetCookiesButton();
 
-        // Show cookies modal if permission not granted OR if cookies are missing
+        // Show cookies section if permission not granted OR if cookies are missing
         if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
-            console.log('🔍 Cookies permission not granted or missing, will show modal');
+            console.log('🔍 Cookies permission not granted or missing, will show section');
             setTimeout(() => {
-                this.showCookiesModal();
+                this.showCookiesSection();
             }, 1000); // Show after 1 second
         } else {
             console.log('🔍 Cookies permission already granted');
@@ -1425,40 +1425,34 @@ class VideoDownloader {
     }
     
     // Cookies Modal Functions
-    showCookiesModal() {
-        const modal = document.getElementById('cookiesModal');
-        if (modal) {
-            modal.style.display = 'block';
-            modal.classList.add('show');
-            document.body.style.overflow = 'hidden';
+    showCookiesSection() {
+        const section = document.getElementById('cookiesSection');
+        if (section) {
+            section.style.display = 'block';
             
             // Add event listeners for buttons
-            this.initializeCookiesModalEvents();
+            this.initializeCookiesSectionEvents();
             
             // Debug log
-            console.log('🔍 Cookies modal displayed');
-            console.log('🔍 Modal element:', modal);
-            console.log('🔍 Modal display style:', modal.style.display);
-            console.log('🔍 Modal classes:', modal.className);
+            console.log('🔍 Cookies section displayed');
+            console.log('🔍 Section element:', section);
         } else {
-            console.error('❌ Cookies modal not found!');
+            console.error('❌ Cookies section not found!');
         }
     }
     
-    hideCookiesModal() {
-        const modal = document.getElementById('cookiesModal');
-        if (modal) {
-            modal.style.display = 'none';
-            modal.classList.remove('show');
-            document.body.style.overflow = 'auto';
+    hideCookiesSection() {
+        const section = document.getElementById('cookiesSection');
+        if (section) {
+            section.style.display = 'none';
         }
     }
     
-    initializeCookiesModalEvents() {
+    initializeCookiesSectionEvents() {
         const saveBtn = document.getElementById('saveCookiesBtn');
         const skipBtn = document.getElementById('skipCookiesBtn');
         
-        console.log('🔍 Initializing cookies modal events...');
+        console.log('🔍 Initializing cookies section events...');
         console.log('🔍 Save button found:', !!saveBtn);
         console.log('🔍 Skip button found:', !!skipBtn);
         
@@ -1498,11 +1492,11 @@ class VideoDownloader {
         // Reset permission flag
         this.cookiesPermissionGranted = false;
         
-        // Show cookies modal again
-        this.showCookiesModal();
+        // Show cookies section again
+        this.showCookiesSection();
         
         console.log('✅ Cookies reset successfully');
-        console.log('🔍 Showing cookies modal again...');
+        console.log('🔍 Showing cookies section again...');
     }
     
     saveCookiesPermission() {
@@ -1533,8 +1527,8 @@ class VideoDownloader {
         // Show success message
         this.showCookiesSuccess();
         
-        // Hide modal
-        this.hideCookiesModal();
+        // Hide cookies section
+        this.hideCookiesSection();
     }
     
     async sendCookiesToServer(cookies) {
@@ -1564,8 +1558,8 @@ class VideoDownloader {
         // Show info message
         this.showCookiesInfo();
         
-        // Hide modal
-        this.hideCookiesModal();
+        // Hide cookies section
+        this.hideCookiesSection();
     }
     
     showCookiesSuccess() {
