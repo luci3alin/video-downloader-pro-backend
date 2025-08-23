@@ -1559,7 +1559,7 @@ class VideoDownloader {
         console.log('🔍 Accepting cookies automatically...');
         
         // Show message that we need REAL cookies
-        this.showNotification('❌ NO AUTOMATIC COOKIES! We need REAL cookies from your browser to bypass bot detection!', 'error');
+        this.showNotification('❌ NO AUTOMATIC COOKIES! We need REAL cookies from your browser to bypass bot detection! Please copy them manually.', 'error');
         
         // Show cookies section for manual input
         this.showCookiesSection();
