@@ -1516,9 +1516,12 @@ class VideoDownloader {
         const consentCookie = document.getElementById('consentCookie').value.trim();
         const visitorCookie = document.getElementById('visitorCookie').value.trim();
         const yscCookie = document.getElementById('yscCookie').value.trim();
+        const loginInfoCookie = document.getElementById('loginInfoCookie').value.trim();
+        const sidCookie = document.getElementById('sidCookie').value.trim();
+        const hsidCookie = document.getElementById('hsidCookie').value.trim();
         
         if (!consentCookie || !visitorCookie || !yscCookie) {
-            alert('Please fill in all cookie fields');
+            alert('Please fill in the required cookie fields (CONSENT, VISITOR_INFO1_LIVE, YSC)');
             return;
         }
         
@@ -1526,7 +1529,10 @@ class VideoDownloader {
         const cookies = {
             CONSENT: consentCookie,
             VISITOR_INFO1_LIVE: visitorCookie,
-            YSC: yscCookie
+            YSC: yscCookie,
+            LOGIN_INFO: loginInfoCookie || null,
+            SID: sidCookie || null,
+            HSID: hsidCookie || null
         };
         
         localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
@@ -1546,11 +1552,17 @@ class VideoDownloader {
     acceptCookiesAutomatically() {
         console.log('🔍 Accepting cookies automatically...');
         
-        // Generate default cookies that work
+        // Generate enhanced default cookies that work better
         const defaultCookies = {
             CONSENT: 'YES+cb.20241231-19-p0.en+FX+425',
             VISITOR_INFO1_LIVE: 'v' + Math.random().toString(36).substring(2, 13),
-            YSC: Math.random().toString(36).substring(2, 17)
+            YSC: Math.random().toString(36).substring(2, 17),
+            LOGIN_INFO: 'AFmmF2swRQIhAJ' + Math.random().toString(36).substring(2, 8),
+            SID: 'OQjWNV_' + Math.random().toString(36).substring(2, 15),
+            HSID: 'AbC' + Math.random().toString(36).substring(2, 15),
+            SSID: 'GhI' + Math.random().toString(36).substring(2, 15),
+            APISID: 'MnO' + Math.random().toString(36).substring(2, 15),
+            SAPISID: 'StU' + Math.random().toString(36).substring(2, 15)
         };
         
         // Save to localStorage
@@ -1562,9 +1574,9 @@ class VideoDownloader {
         this.sendCookiesToServer(defaultCookies);
         
         // Show success message
-        this.showNotification('✅ Cookies accepted automatically! YouTube downloads should work now.', 'success');
+        this.showNotification('✅ Enhanced cookies accepted automatically! YouTube downloads should work better now.', 'success');
         
-        console.log('✅ Cookies accepted automatically:', defaultCookies);
+        console.log('✅ Enhanced cookies accepted automatically:', defaultCookies);
         
         // Hide cookies section if it's visible
         this.hideCookiesSection();

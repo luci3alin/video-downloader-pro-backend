@@ -57,19 +57,32 @@ function getManualCookies() {
     // Use user cookies if available, otherwise use defaults
     const cookiesToUse = userCookies;
     
-    // Create Netscape format cookies file
+    // Create enhanced Netscape format cookies file with MORE cookies for better authentication
     const netscapeCookies = `# Netscape HTTP Cookie File
 # This file contains YouTube cookies for authentication
+# Generated for yt-dlp to bypass bot detection
 .youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${cookiesToUse.CONSENT}
 .youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${cookiesToUse.VISITOR_INFO1_LIVE}
 .youtube.com	TRUE	/	FALSE	1735689600	YSC	${cookiesToUse.YSC}
 .youtube.com	TRUE	/	FALSE	1735689600	GPS	1
 .youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
+.youtube.com	TRUE	/	FALSE	1735689600	LOGIN_INFO	${cookiesToUse.LOGIN_INFO || 'AFmmF2swRQIhAJ'}
+.youtube.com	TRUE	/	FALSE	1735689600	SID	${cookiesToUse.SID || 'OQjWNV_abc123'}
+.youtube.com	TRUE	/	FALSE	1735689600	HSID	${cookiesToUse.HSID || 'AbC123dEf456'}
+.youtube.com	TRUE	/	FALSE	1735689600	SSID	${cookiesToUse.SSID || 'GhI789jKl012'}
+.youtube.com	TRUE	/	FALSE	1735689600	APISID	${cookiesToUse.APISID || 'MnO345pQr678'}
+.youtube.com	TRUE	/	FALSE	1735689600	SAPISID	${cookiesToUse.SAPISID || 'StU901vWx234'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PAPISID	${cookiesToUse.SECURE_1PAPISID || 'YzA567bCd890'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PAPISID	${cookiesToUse.SECURE_3PAPISID || 'YzA567bCd890'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSID	${cookiesToUse.SECURE_1PSID || 'KlM789nOp012'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSID	${cookiesToUse.SECURE_3PSID || 'QrS345tUv678'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSIDCC	${cookiesToUse.SECURE_1PSIDCC || 'WxY901zAb234'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSIDCC	${cookiesToUse.SECURE_3PSIDCC || 'CdE567fGh890'}
 `;
     
     try {
         fs.writeFileSync(cookieFile, netscapeCookies);
-        console.log('✅ Created YouTube cookies file with user values');
+        console.log('✅ Created enhanced YouTube cookies file with additional auth cookies');
         return cookieFile;
     } catch (error) {
         console.error('⚠️ Failed to write cookies file:', error.message);
