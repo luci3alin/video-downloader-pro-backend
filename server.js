@@ -428,7 +428,7 @@ app.post('/api/download-playlist', async (req, res) => {
                                       '--no-progress',
                                       '--quiet',
                                       '--user-agent', getRandomUserAgent(),
-                                      '--cookies-from-browser', 'chrome,firefox,edge',
+                                      '--cookies-from-browser', 'brave',
                                       '--no-check-certificates',
                                       '--prefer-insecure',
                                       ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
@@ -1141,7 +1141,7 @@ async function getYouTubeInfoViaYtDlp(url) {
                 '--quiet',
                 '--no-warnings',
                 '--user-agent', getRandomUserAgent(),
-                '--cookies-from-browser', 'chrome,firefox,edge',
+                '--cookies-from-browser', 'brave',
                 '--no-check-certificates',
                 '--prefer-insecure',
                 '--extractor-args', 'youtube:player_client=android',
@@ -1512,7 +1512,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         
         // Use spawn directly instead of YTDlpWrap for better control
         console.log('🔧 Using direct spawn for yt-dlp...');
-        console.log('🔐 Authentication method: Browser cookies extraction (chrome,firefox,edge)');
+        console.log('🔐 Authentication method: Browser cookies extraction (brave)');
         
         const ytDlpProcess = spawn(ytDlpPath, [
             url,
@@ -1524,7 +1524,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--quiet',
             // Enhanced anti-bot detection v2.0 with browser cookies
             '--user-agent', getRandomUserAgent(),
-            '--cookies-from-browser', 'chrome,firefox,edge',
+            '--cookies-from-browser', 'brave',
             '--no-check-certificates',
             '--prefer-insecure',
             '--extractor-args', 'youtube:player_client=android',

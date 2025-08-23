@@ -6,10 +6,20 @@ class VideoDownloader {
         this.currentUrl = '';
         this.downloadProgress = 0;
         
+        // Check if cookies permission was already granted
+        this.cookiesPermissionGranted = localStorage.getItem('cookiesPermission') === 'granted';
+        
         // Initialize platform attributes after DOM is loaded
         setTimeout(() => {
             this.initializePlatformAttributes();
         }, 100);
+        
+        // Show cookies modal if permission not granted
+        if (!this.cookiesPermissionGranted) {
+            setTimeout(() => {
+                this.showCookiesModal();
+            }, 1000); // Show after 1 second
+        }
     }
 
     initializeEventListeners() {
@@ -1506,6 +1516,104 @@ if ('serviceWorker' in navigator) {
             console.log('Service worker not registered: file:// protocol not supported');
         }
     });
+    
+    // Cookies Modal Functions
+    showCookiesModal() {
+        const modal = document.getElementById('cookiesModal');
+        if (modal) {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // Add event listeners for buttons
+            this.initializeCookiesModalEvents();
+        }
+    }
+    
+    hideCookiesModal() {
+        const modal = document.getElementById('cookiesModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+    
+    initializeCookiesModalEvents() {
+        const grantBtn = document.getElementById('grantCookiesBtn');
+        const denyBtn = document.getElementById('denyCookiesBtn');
+        
+        if (grantBtn) {
+            grantBtn.addEventListener('click', () => {
+                this.grantCookiesPermission();
+            });
+        }
+        
+        if (denyBtn) {
+            denyBtn.addEventListener('click', () => {
+                this.denyCookiesPermission();
+            });
+        }
+    }
+    
+    grantCookiesPermission() {
+        // Save permission to localStorage
+        localStorage.setItem('cookiesPermission', 'granted');
+        this.cookiesPermissionGranted = true;
+        
+        // Show success message
+        this.showCookiesSuccess();
+        
+        // Hide modal
+        this.hideCookiesModal();
+    }
+    
+    denyCookiesPermission() {
+        // Save permission to localStorage
+        localStorage.setItem('cookiesPermission', 'denied');
+        
+        // Show warning message
+        this.showCookiesWarning();
+        
+        // Hide modal
+        this.hideCookiesModal();
+    }
+    
+    showCookiesSuccess() {
+        // Create success notification
+        const notification = document.createElement('div');
+        notification.className = 'cookies-notification success';
+        notification.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <span>Cookies permission granted! YouTube downloads should work better now.</span>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+    
+    showCookiesWarning() {
+        // Create warning notification
+        const notification = document.createElement('div');
+        notification.className = 'cookies-notification warning';
+        notification.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Cookies permission denied. YouTube downloads may fail due to bot detection.</span>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
 }
 
 // Revolut tag copy functionality

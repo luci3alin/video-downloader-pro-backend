@@ -32,6 +32,41 @@
             </div>
         </header>
 
+        <!-- Cookies Permission Modal -->
+        <div id="cookiesModal" class="cookies-modal">
+            <div class="cookies-content">
+                <div class="cookies-header">
+                    <i class="fas fa-shield-alt"></i>
+                    <h2>Cookies Permission Required</h2>
+                </div>
+                <div class="cookies-body">
+                    <p>To download YouTube videos, we need access to your browser cookies for authentication. This helps bypass YouTube's bot detection.</p>
+                    <div class="cookies-info">
+                        <h4>What we need:</h4>
+                        <ul>
+                            <li>Access to Brave browser cookies</li>
+                            <li>YouTube authentication data</li>
+                            <li>No personal information is collected</li>
+                        </ul>
+                    </div>
+                    <div class="cookies-warning">
+                        <i class="fas fa-info-circle"></i>
+                        <p><strong>Note:</strong> Make sure you're logged into YouTube in your Brave browser for best results.</p>
+                    </div>
+                </div>
+                <div class="cookies-actions">
+                    <button id="grantCookiesBtn" class="grant-btn">
+                        <i class="fas fa-check"></i>
+                        Grant Access
+                    </button>
+                    <button id="denyCookiesBtn" class="deny-btn">
+                        <i class="fas fa-times"></i>
+                        Deny Access
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <main class="main-content">
             <!-- Download Form -->
