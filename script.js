@@ -19,9 +19,12 @@ class VideoDownloader {
 
         // Show cookies modal if permission not granted OR if cookies are missing
         if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
+            console.log('🔍 Cookies permission not granted or missing, will show modal');
             setTimeout(() => {
                 this.showCookiesModal();
             }, 1000); // Show after 1 second
+        } else {
+            console.log('🔍 Cookies permission already granted');
         }
     }
 
@@ -1430,6 +1433,13 @@ class VideoDownloader {
             
             // Add event listeners for buttons
             this.initializeCookiesModalEvents();
+            
+            // Debug log
+            console.log('🔍 Cookies modal displayed');
+            console.log('🔍 Modal element:', modal);
+            console.log('🔍 Modal display style:', modal.style.display);
+        } else {
+            console.error('❌ Cookies modal not found!');
         }
     }
     
@@ -1445,16 +1455,26 @@ class VideoDownloader {
         const saveBtn = document.getElementById('saveCookiesBtn');
         const skipBtn = document.getElementById('skipCookiesBtn');
         
+        console.log('🔍 Initializing cookies modal events...');
+        console.log('🔍 Save button found:', !!saveBtn);
+        console.log('🔍 Skip button found:', !!skipBtn);
+        
         if (saveBtn) {
             saveBtn.addEventListener('click', () => {
+                console.log('🔍 Save cookies button clicked');
                 this.saveCookiesPermission();
             });
+        } else {
+            console.error('❌ Save cookies button not found!');
         }
         
         if (skipBtn) {
             skipBtn.addEventListener('click', () => {
+                console.log('🔍 Skip cookies button clicked');
                 this.skipCookiesPermission();
             });
+        } else {
+            console.error('❌ Skip cookies button not found!');
         }
     }
     
@@ -1479,6 +1499,7 @@ class VideoDownloader {
         this.showCookiesModal();
         
         console.log('✅ Cookies reset successfully');
+        console.log('🔍 Showing cookies modal again...');
     }
     
     saveCookiesPermission() {
