@@ -1,30 +1,34 @@
 // Video Downloader Pro - Main JavaScript File
 
 class VideoDownloader {
-        constructor() {
+    constructor() {
+        this.currentTheme = 'default';
+        this.isDownloading = false;
+        this.downloadQueue = [];
+        this.currentDownload = null;
+        this.downloadProgress = 0;
+        this.downloadSpeed = 0;
+        this.downloadStartTime = 0;
+        this.downloadedBytes = 0;
+        this.totalBytes = 0;
+        this.lastProgressUpdate = 0;
+        this.progressUpdateInterval = 100;
+        this.downloadMethod = null;
+        this.analysisMethod = null;
+        
+        this.init();
+    }
+
+    init() {
         this.initializeEventListeners();
         this.currentUrl = '';
-        this.downloadProgress = 0;
-
-        // Check if cookies permission was already granted
-        this.cookiesPermissionGranted = localStorage.getItem('cookiesPermission') === 'granted';
-
+        
         // Initialize platform attributes after DOM is loaded
         setTimeout(() => {
             this.initializePlatformAttributes();
         }, 100);
         
-        // Initialize cookies buttons
-        this.initializeCookiesButtons();
 
-        // Show cookies section if permission not granted OR if cookies are missing
-        if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
-            console.log('🔍 Cookies permission not granted or missing, will show section');
-            // Show immediately instead of waiting
-            this.showCookiesSection();
-        } else {
-            console.log('🔍 Cookies permission already granted');
-        }
     }
 
     initializeEventListeners() {
@@ -1423,375 +1427,37 @@ class VideoDownloader {
         this.removePornHubPlatform();
     }
     
-    // Cookies Modal Functions
-    showCookiesSection() {
-        const cookiesSection = document.getElementById('cookiesSection');
-        console.log('🔍 showCookiesSection called');
-        console.log('🔍 cookiesSection element:', cookiesSection);
-        
-        if (cookiesSection) {
-            // Force display with !important
-            cookiesSection.style.setProperty('display', 'block', 'important');
-            cookiesSection.style.setProperty('visibility', 'visible', 'important');
-            cookiesSection.style.setProperty('opacity', '1', 'important');
-            
-            console.log('🔍 Cookies section display style set to:', cookiesSection.style.display);
-            console.log('🔍 Cookies section computed style:', window.getComputedStyle(cookiesSection).display);
-            
-            // Initialize events
-            this.initializeCookiesSectionEvents();
-            
-            // Auto-fill any cookies we found
-            this.autoFillCookieInputs();
-            
-            // Show helpful instructions
-            this.showCookieInstructions();
-            
-            console.log('🔍 Cookies section displayed');
-        } else {
-            console.error('❌ Cookies section not found!');
-        }
-    }
+    // Cookie functionality removed
     
-    hideCookiesSection() {
-        const cookiesSection = document.getElementById('cookiesSection');
-        if (cookiesSection) {
-            cookiesSection.style.display = 'none';
-            console.log('🔍 Cookies section hidden');
-        }
-    }
+
     
-    initializeCookiesSectionEvents() {
-        console.log('🔍 Initializing cookies section events...');
-        
-                        const saveBtn = document.getElementById('saveCookiesBtn');
-                const testBtn = document.getElementById('testCookiesBtn');
-                const noCookiesBtn = document.getElementById('noCookiesModeBtn');
-                const skipBtn = document.getElementById('skipCookiesBtn');
-                
-                console.log('🔍 Save button found:', !!saveBtn);
-                console.log('🔍 Test button found:', !!testBtn);
-                console.log('🔍 No cookies button found:', !!noCookiesBtn);
-                console.log('🔍 Skip button found:', !!skipBtn);
-        
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => this.saveCookiesPermission());
-        }
-        
-                        if (testBtn) {
-                    testBtn.addEventListener('click', () => this.testCurrentCookies());
-                }
-                
-                if (noCookiesBtn) {
-                    noCookiesBtn.addEventListener('click', () => this.enableCaptchaBypassMode());
-                }
-                
-                if (skipBtn) {
-                    skipBtn.addEventListener('click', () => this.skipCookiesPermission());
-                }
-    }
+
     
-    initializeCookiesButtons() {
-        const resetBtn = document.getElementById('resetCookiesBtn');
-        const acceptBtn = document.getElementById('acceptCookiesBtn');
-        
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                this.resetCookies();
-            });
-        }
-        
-        if (acceptBtn) {
-            acceptBtn.addEventListener('click', () => {
-                this.acceptCookiesAutomatically();
-            });
-        }
-        
-        console.log('🔍 Cookies buttons initialized');
-        console.log('🔍 Reset button found:', !!resetBtn);
-        console.log('🔍 Accept button found:', !!acceptBtn);
-    }
+
     
-    resetCookies() {
-        // Clear cookies from localStorage
-        localStorage.removeItem('youtubeCookies');
-        localStorage.removeItem('cookiesPermission');
-        
-        // Reset permission flag
-        this.cookiesPermissionGranted = false;
-        
-        // Show cookies section again
-        this.showCookiesSection();
-        
-        console.log('✅ Cookies reset successfully');
-        console.log('🔍 Showing cookies section again...');
-    }
+
     
-    saveCookiesPermission() {
-        // Get cookie values from inputs
-        const consentCookie = document.getElementById('consentCookie').value.trim();
-        const visitorCookie = document.getElementById('visitorCookie').value.trim();
-        const yscCookie = document.getElementById('yscCookie').value.trim();
-        const loginInfoCookie = document.getElementById('loginInfoCookie').value.trim();
-        const sidCookie = document.getElementById('sidCookie').value.trim();
-        const hsidCookie = document.getElementById('hsidCookie').value.trim();
-        const ssidCookie = document.getElementById('ssidCookie').value.trim();
-        const apisidCookie = document.getElementById('apisidCookie').value.trim();
-        const sapisidCookie = document.getElementById('sapisidCookie').value.trim();
-        
-        if (!consentCookie || !visitorCookie || !yscCookie) {
-            alert('Please fill in the required cookie fields (CONSENT, VISITOR_INFO1_LIVE, YSC)');
-            return;
-        }
-        
-        // Save cookies to localStorage
-        const cookies = {
-            CONSENT: consentCookie,
-            VISITOR_INFO1_LIVE: visitorCookie,
-            YSC: yscCookie,
-            LOGIN_INFO: loginInfoCookie || null,
-            SID: sidCookie || null,
-            HSID: hsidCookie || null,
-            SSID: ssidCookie || null,
-            APISID: apisidCookie || null,
-            SAPISID: sapisidCookie || null
-        };
-        
-        localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
-        localStorage.setItem('cookiesPermission', 'granted');
-        this.cookiesPermissionGranted = true;
-        
-        // Send cookies to server
-        this.sendCookiesToServer(cookies);
-        
-        // Show success message
-        this.showCookiesSuccess();
-        
-        // Hide cookies section
-        this.hideCookiesSection();
-    }
+
     
-    acceptCookiesAutomatically() {
-        console.log('🔍 Accepting cookies automatically from browser...');
-        
-        try {
-            // Always try to extract cookies from current page first
-            const extractedCookies = this.extractCookiesFromCurrentPage();
-            
-            if (extractedCookies && Object.keys(extractedCookies).length > 0) {
-                console.log('✅ Found cookies on current page:', extractedCookies);
-                this.saveAndUseCookies(extractedCookies);
-            } else {
-                console.log('❌ No cookies found on current page, trying alternative methods...');
-                this.tryAlternativeCookieExtraction();
-            }
-        } catch (error) {
-            console.error('❌ Error extracting cookies:', error);
-            this.showNotification('❌ Could not extract cookies automatically. Please copy them manually.', 'error');
-            this.showCookiesSection();
-        }
-    }
+
     
-    extractCookiesFromCurrentPage() {
-        console.log('🔍 Extracting cookies from current page...');
-        console.log('🔍 Current URL:', window.location.href);
-        console.log('🔍 Current hostname:', window.location.hostname);
-        
-        // Try multiple methods to get cookies
-        const cookies = {};
-        
-        // Method 1: document.cookie (basic cookies)
-        try {
-            const basicCookies = document.cookie.split(';').reduce((acc, cookie) => {
-                const [name, value] = cookie.trim().split('=');
-                if (name && value) {
-                    acc[name.trim()] = value.trim();
-                }
-                return acc;
-            }, {});
-            
-            console.log('🔍 Basic cookies from document.cookie:', basicCookies);
-            Object.assign(cookies, basicCookies);
-        } catch (error) {
-            console.log('❌ Error reading basic cookies:', error);
-        }
-        
-        // Method 2: Try to access localStorage for any stored cookies
-        try {
-            const storedCookies = localStorage.getItem('youtubeCookies');
-            if (storedCookies) {
-                const parsed = JSON.parse(storedCookies);
-                console.log('🔍 Found stored cookies in localStorage:', parsed);
-                Object.assign(cookies, parsed);
-            }
-        } catch (error) {
-            console.log('❌ Error reading stored cookies:', error);
-        }
-        
-        // Method 3: Try to access sessionStorage
-        try {
-            const sessionCookies = sessionStorage.getItem('youtubeCookies');
-            if (sessionCookies) {
-                const parsed = JSON.parse(sessionCookies);
-                console.log('🔍 Found cookies in sessionStorage:', parsed);
-                Object.assign(cookies, parsed);
-            }
-        } catch (error) {
-            console.log('❌ Error reading session cookies:', error);
-        }
-        
-        console.log('🔍 All extracted cookies:', cookies);
-        
-        // Check if we have any useful cookies
-        const hasAnyCookies = Object.keys(cookies).length > 0;
-        const hasRequiredCookies = cookies.CONSENT || cookies.VISITOR_INFO1_LIVE || cookies.YSC;
-        
-        console.log('🔍 Has any cookies:', hasAnyCookies);
-        console.log('🔍 Has required cookies:', hasRequiredCookies);
-        
-        if (hasAnyCookies) {
-            return cookies;
-        }
-        
-        return null;
-    }
+
     
-    tryAlternativeCookieExtraction() {
-        console.log('🔍 Trying alternative cookie extraction methods...');
-        
-        // Check if we're on YouTube domain
-        if (window.location.hostname.includes('youtube.com') || 
-            window.location.hostname.includes('youtu.be') ||
-            window.location.href.includes('youtube.com')) {
-            
-            console.log('🔍 On YouTube domain, showing manual extraction instructions...');
-            this.showNotification('🔍 You are on YouTube! However, some cookies are protected and cannot be accessed automatically. Please copy them manually from your browser.', 'info');
-            this.showCookiesSection();
-            
-            // Try to help user by showing what cookies we can see
-            this.showVisibleCookies();
-        } else {
-            console.log('🔍 Not on YouTube domain, showing general instructions...');
-            this.showNotification('❌ Please go to YouTube.com, log in, then come back and try again.', 'error');
-            this.showCookiesSection();
-        }
-    }
+
     
-    showVisibleCookies() {
-        console.log('🔍 Showing visible cookies to help user...');
-        
-        try {
-            const visibleCookies = document.cookie;
-            if (visibleCookies) {
-                console.log('🔍 Visible cookies on this page:', visibleCookies);
-                
-                // Parse and display them in a helpful way
-                const cookieList = visibleCookies.split(';').map(cookie => {
-                    const [name, value] = cookie.trim().split('=');
-                    return { name: name.trim(), value: value.trim() };
-                });
-                
-                console.log('🔍 Parsed visible cookies:', cookieList);
-                
-                // Show notification with cookie info
-                const cookieNames = cookieList.map(c => c.name).join(', ');
-                this.showNotification(`🔍 Found cookies: ${cookieNames}. Some may be protected. Please copy ALL cookies manually.`, 'info');
-            } else {
-                console.log('🔍 No visible cookies on this page');
-                this.showNotification('🔍 No visible cookies found. YouTube may be blocking access. Please copy cookies manually from F12 → Application → Cookies.', 'info');
-            }
-        } catch (error) {
-            console.log('❌ Error showing visible cookies:', error);
-            this.showNotification('🔍 Please copy cookies manually from F12 → Application → Cookies → youtube.com', 'info');
-        }
-    }
+
     
-    saveAndUseCookies(cookies) {
-        console.log('💾 Saving and using cookies:', cookies);
-        
-        // Save to localStorage
-        localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
-        localStorage.setItem('cookiesPermission', 'granted');
-        this.cookiesPermissionGranted = true;
-        
-        // Send to server
-        this.sendCookiesToServer(cookies);
-        
-        // Test if cookies work
-        this.testCookies(cookies);
-        
-        // Show success message
-        this.showNotification('✅ Cookies extracted and saved successfully! Testing if they work...', 'success');
-        
-        // Hide cookies section
-        this.hideCookiesSection();
-    }
+
     
-    testCookies(cookies) {
-        console.log('🧪 Testing if cookies work...');
-        
-        // Make a simple test request to see if cookies are valid
-        fetch('/test-cookies', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ cookies })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('✅ Cookie test successful:', data.message);
-                this.showNotification('✅ Cookies are working! YouTube downloads should work now!', 'success');
-            } else {
-                console.log('❌ Cookie test failed:', data.message);
-                this.showNotification('⚠️ Cookies may not be working properly. Try getting fresh cookies from YouTube.', 'warning');
-            }
-        })
-        .catch(error => {
-            console.log('❌ Cookie test error:', error);
-            this.showNotification('⚠️ Could not test cookies. They may still work for downloads.', 'warning');
-        });
-    }
+
     
-    async sendCookiesToServer(cookies) {
-        try {
-            console.log('📤 Sending cookies to server...');
-            
-            const response = await fetch('/update-cookies', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ cookies })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ Cookies updated from frontend:', data.cookies);
-            } else {
-                console.error('❌ Failed to send cookies to server:', response.status);
-            }
-        } catch (error) {
-            console.error('❌ Error sending cookies to server:', error);
-        }
-    }
+
     
-    skipCookiesPermission() {
-        console.log('🔍 Skipping cookies permission...');
-        localStorage.setItem('cookiesPermission', 'skipped');
-        this.cookiesPermissionGranted = false;
-        this.hideCookiesSection();
-        this.showCookiesInfo();
-    }
+
     
-    showCookiesInfo() {
-        this.showNotification('⚠️ Cookies skipped. YouTube downloads may not work properly. You can always set cookies later using the "Accept Cookies" button.', 'warning');
-    }
+
     
-    showCookiesSuccess() {
-        this.showNotification('✅ Cookies saved successfully! YouTube downloads should work now.', 'success');
-    }
+
     
 
     
@@ -1875,74 +1541,25 @@ class VideoDownloader {
             }
         }
     }
-
-                testCurrentCookies() {
-                console.log('🧪 Testing current cookies...');
-                
-                // Get cookies from input fields
-                const cookies = {
-                    CONSENT: document.getElementById('consentCookie').value.trim(),
-                    VISITOR_INFO1_LIVE: document.getElementById('visitorCookie').value.trim(),
-                    YSC: document.getElementById('yscCookie').value.trim(),
-                    LOGIN_INFO: document.getElementById('loginInfoCookie').value.trim(),
-                    SID: document.getElementById('sidCookie').value.trim(),
-                    HSID: document.getElementById('hsidCookie').value.trim(),
-                    SSID: document.getElementById('ssidCookie').value.trim(),
-                    APISID: document.getElementById('apisidCookie').value.trim(),
-                    SAPISID: document.getElementById('sapisidCookie').value.trim()
-                };
-                
-                if (!cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
-                    this.showNotification('❌ Please fill in the required cookie fields first (CONSENT, VISITOR_INFO1_LIVE, YSC)', 'error');
-                    return;
-                }
-                
-                // Show testing notification
-                this.showNotification('🧪 Testing cookies... Please wait...', 'info');
-                
-                // Test the cookies
-                this.testCookies(cookies);
+    
+    showNotification(message, type = 'info') {
+        // Create notification
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
             }
-            
-            enableCaptchaBypassMode() {
-                console.log('🤖 Enabling CAPTCHA Bypass Mode...');
-                
-                // Save bypass mode to localStorage
-                localStorage.setItem('captchaBypassMode', 'enabled');
-                localStorage.setItem('cookiesPermission', 'bypass');
-                this.cookiesPermissionGranted = true;
-                
-                // Send bypass mode to server
-                this.sendCaptchaBypassToServer();
-                
-                // Show success message
-                this.showNotification('🤖 CAPTCHA Bypass Mode enabled! Downloads will use advanced bot detection evasion without cookies.', 'success');
-                
-                // Hide cookies section
-                this.hideCookiesSection();
-            }
-            
-            async sendCaptchaBypassToServer() {
-                try {
-                    console.log('🤖 Enabling CAPTCHA bypass on server...');
-                    
-                    const response = await fetch('/enable-captcha-bypass', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ enabled: true })
-                    });
-                    
-                    if (response.ok) {
-                        console.log('✅ CAPTCHA bypass enabled on server');
-                    } else {
-                        console.error('❌ Failed to enable CAPTCHA bypass on server:', response.status);
-                    }
-                } catch (error) {
-                    console.error('❌ Error enabling CAPTCHA bypass on server:', error);
-                }
-            }
+        }, 5000);
+    }
 }
 
 // Global functions that can be called from HTML
