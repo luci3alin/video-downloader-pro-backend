@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "build": "npm install",
-    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp.exe"
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp && chmod +x yt-dlp"
   },
   "keywords": [
     "video-downloader",
@@ -24,9 +24,9 @@
     "cheerio": "^1.0.0-rc.12",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "fluent-ffmpeg": "^2.1.2",
     "yt-dlp-wrap": "^2.3.12"
   },
-
   "engines": {
     "node": ">=18.0.0"
   }
