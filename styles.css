@@ -2499,7 +2499,7 @@ body {
     margin-top: 20px;
 }
 
-.save-btn, .test-btn, .deny-btn {
+.save-btn, .test-btn, .nocookies-btn, .skip-btn, .deny-btn {
     padding: 18px 35px;
     border: none;
     border-radius: 12px;
@@ -2535,6 +2535,29 @@ body {
     background: #1976d2;
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(33, 150, 243, 0.3);
+}
+
+.nocookies-btn {
+    background: linear-gradient(135deg, #ff6b6b, #feca57);
+    color: white;
+    font-weight: bold;
+}
+
+.nocookies-btn:hover {
+    background: linear-gradient(135deg, #ff5252, #fdd835);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+}
+
+.skip-btn {
+    background: #757575;
+    color: white;
+}
+
+.skip-btn:hover {
+    background: #616161;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(117, 117, 117, 0.3);
 }
 
 .deny-btn {

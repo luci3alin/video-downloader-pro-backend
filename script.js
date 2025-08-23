@@ -1456,25 +1456,31 @@ class VideoDownloader {
     initializeCookiesSectionEvents() {
         console.log('🔍 Initializing cookies section events...');
         
-        const saveBtn = document.getElementById('saveCookiesBtn');
-        const testBtn = document.getElementById('testCookiesBtn');
-        const skipBtn = document.getElementById('skipCookiesBtn');
-        
-        console.log('🔍 Save button found:', !!saveBtn);
-        console.log('🔍 Test button found:', !!testBtn);
-        console.log('🔍 Skip button found:', !!skipBtn);
+                        const saveBtn = document.getElementById('saveCookiesBtn');
+                const testBtn = document.getElementById('testCookiesBtn');
+                const noCookiesBtn = document.getElementById('noCookiesModeBtn');
+                const skipBtn = document.getElementById('skipCookiesBtn');
+                
+                console.log('🔍 Save button found:', !!saveBtn);
+                console.log('🔍 Test button found:', !!testBtn);
+                console.log('🔍 No cookies button found:', !!noCookiesBtn);
+                console.log('🔍 Skip button found:', !!skipBtn);
         
         if (saveBtn) {
             saveBtn.addEventListener('click', () => this.saveCookiesPermission());
         }
         
-        if (testBtn) {
-            testBtn.addEventListener('click', () => this.testCurrentCookies());
-        }
-        
-        if (skipBtn) {
-            skipBtn.addEventListener('click', () => this.skipCookiesPermission());
-        }
+                        if (testBtn) {
+                    testBtn.addEventListener('click', () => this.testCurrentCookies());
+                }
+                
+                if (noCookiesBtn) {
+                    noCookiesBtn.addEventListener('click', () => this.enableCaptchaBypassMode());
+                }
+                
+                if (skipBtn) {
+                    skipBtn.addEventListener('click', () => this.skipCookiesPermission());
+                }
     }
     
     initializeCookiesButtons() {
@@ -1862,33 +1868,73 @@ class VideoDownloader {
         }
     }
 
-    testCurrentCookies() {
-        console.log('🧪 Testing current cookies...');
-        
-        // Get cookies from input fields
-        const cookies = {
-            CONSENT: document.getElementById('consentCookie').value.trim(),
-            VISITOR_INFO1_LIVE: document.getElementById('visitorCookie').value.trim(),
-            YSC: document.getElementById('yscCookie').value.trim(),
-            LOGIN_INFO: document.getElementById('loginInfoCookie').value.trim(),
-            SID: document.getElementById('sidCookie').value.trim(),
-            HSID: document.getElementById('hsidCookie').value.trim(),
-            SSID: document.getElementById('ssidCookie').value.trim(),
-            APISID: document.getElementById('apisidCookie').value.trim(),
-            SAPISID: document.getElementById('sapisidCookie').value.trim()
-        };
-        
-        if (!cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
-            this.showNotification('❌ Please fill in the required cookie fields first (CONSENT, VISITOR_INFO1_LIVE, YSC)', 'error');
-            return;
-        }
-        
-        // Show testing notification
-        this.showNotification('🧪 Testing cookies... Please wait...', 'info');
-        
-        // Test the cookies
-        this.testCookies(cookies);
-    }
+                testCurrentCookies() {
+                console.log('🧪 Testing current cookies...');
+                
+                // Get cookies from input fields
+                const cookies = {
+                    CONSENT: document.getElementById('consentCookie').value.trim(),
+                    VISITOR_INFO1_LIVE: document.getElementById('visitorCookie').value.trim(),
+                    YSC: document.getElementById('yscCookie').value.trim(),
+                    LOGIN_INFO: document.getElementById('loginInfoCookie').value.trim(),
+                    SID: document.getElementById('sidCookie').value.trim(),
+                    HSID: document.getElementById('hsidCookie').value.trim(),
+                    SSID: document.getElementById('ssidCookie').value.trim(),
+                    APISID: document.getElementById('apisidCookie').value.trim(),
+                    SAPISID: document.getElementById('sapisidCookie').value.trim()
+                };
+                
+                if (!cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
+                    this.showNotification('❌ Please fill in the required cookie fields first (CONSENT, VISITOR_INFO1_LIVE, YSC)', 'error');
+                    return;
+                }
+                
+                // Show testing notification
+                this.showNotification('🧪 Testing cookies... Please wait...', 'info');
+                
+                // Test the cookies
+                this.testCookies(cookies);
+            }
+            
+            enableCaptchaBypassMode() {
+                console.log('🤖 Enabling CAPTCHA Bypass Mode...');
+                
+                // Save bypass mode to localStorage
+                localStorage.setItem('captchaBypassMode', 'enabled');
+                localStorage.setItem('cookiesPermission', 'bypass');
+                this.cookiesPermissionGranted = true;
+                
+                // Send bypass mode to server
+                this.sendCaptchaBypassToServer();
+                
+                // Show success message
+                this.showNotification('🤖 CAPTCHA Bypass Mode enabled! Downloads will use advanced bot detection evasion without cookies.', 'success');
+                
+                // Hide cookies section
+                this.hideCookiesSection();
+            }
+            
+            async sendCaptchaBypassToServer() {
+                try {
+                    console.log('🤖 Enabling CAPTCHA bypass on server...');
+                    
+                    const response = await fetch('/enable-captcha-bypass', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ enabled: true })
+                    });
+                    
+                    if (response.ok) {
+                        console.log('✅ CAPTCHA bypass enabled on server');
+                    } else {
+                        console.error('❌ Failed to enable CAPTCHA bypass on server:', response.status);
+                    }
+                } catch (error) {
+                    console.error('❌ Error enabling CAPTCHA bypass on server:', error);
+                }
+            }
 }
 
 // Global functions that can be called from HTML

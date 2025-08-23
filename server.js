@@ -57,10 +57,32 @@ function getManualCookies() {
     // Use ONLY real user cookies - no defaults!
     const cookiesToUse = userCookies;
     
+    // Check if CAPTCHA bypass mode is enabled
+    if (global.captchaBypassEnabled) {
+        console.log('🤖 CAPTCHA Bypass Mode enabled - using advanced bot evasion without cookies');
+        
+        // Create minimal cookie file for CAPTCHA bypass mode
+        const bypassCookies = `# Netscape HTTP Cookie File
+# CAPTCHA Bypass Mode - No real cookies needed
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	YES+cb.20241231-19-p0.en+FX+425
+.youtube.com	TRUE	/	FALSE	1735689600	GPS	1
+.youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
+`;
+        
+        try {
+            fs.writeFileSync(cookieFile, bypassCookies);
+            console.log('✅ Created CAPTCHA bypass cookie file');
+            return cookieFile;
+        } catch (error) {
+            console.error('❌ Error creating CAPTCHA bypass cookie file:', error);
+            throw new Error('Failed to create CAPTCHA bypass cookie file');
+        }
+    }
+    
     // If no real cookies, FAIL - we need real ones!
     if (!cookiesToUse || !cookiesToUse.CONSENT || !cookiesToUse.VISITOR_INFO1_LIVE || !cookiesToUse.YSC) {
         console.error('❌ NO REAL COOKIES PROVIDED! YouTube will detect us as a bot!');
-        console.error('❌ Please provide real cookies from your browser!');
+        console.error('❌ Please provide real cookies from your browser OR enable CAPTCHA bypass mode!');
         throw new Error('Real YouTube cookies are required to bypass bot detection');
     }
     
@@ -1622,11 +1644,30 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--cookies', getManualCookies(),
             '--no-check-certificate',
             '--prefer-insecure',
+            // Enhanced CAPTCHA bypass and bot detection evasion v4.0
             '--extractor-args', 'youtube:player_client=android',
             '--extractor-args', 'youtube:player_skip=webpage',
-            '--extractor-args', 'youtube:player_skip=webpage,player_client=android',
-            '--extractor-args', 'youtube:player_skip=webpage,player_client=android,player_skip=webpage',
-            '--extractor-args', 'youtube:player_skip=webpage,player_client=android,player_skip=webpage,player_client=android',
+            '--extractor-args', 'youtube:skip=hls,dash',
+            '--extractor-args', 'youtube:player_client=web',
+            '--extractor-args', 'youtube:player_client=ios',
+            '--extractor-args', 'youtube:player_client=android_creator',
+            '--extractor-args', 'youtube:player_client=android_music',
+            '--extractor-args', 'youtube:innertube_host=studio.youtube.com',
+            '--extractor-args', 'youtube:innertube_key=AIzaSyBUPetSUmoZL-OhlxA7wSac5XinrygCqMo',
+            // Anti-CAPTCHA measures
+            '--sleep-interval', '1',
+            '--max-sleep-interval', '3',
+            '--sleep-subtitles', '1',
+            '--write-auto-subs',
+            '--embed-subs',
+            '--sub-lang', 'en',
+            // Browser emulation to avoid CAPTCHA
+            '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            '--add-header', 'Accept-Language:en-US,en;q=0.5',
+            '--add-header', 'Accept-Encoding:gzip, deflate',
+            '--add-header', 'DNT:1',
+            '--add-header', 'Connection:keep-alive',
+            '--add-header', 'Upgrade-Insecure-Requests:1',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
         ]);
         
@@ -2594,6 +2635,18 @@ async function testYoutubeCookies(cookieFile) {
         }, 30000);
     });
 }
+
+// Enable CAPTCHA bypass endpoint
+app.post('/enable-captcha-bypass', (req, res) => {
+    try {
+        console.log('🤖 CAPTCHA Bypass Mode enabled from frontend');
+        global.captchaBypassEnabled = true;
+        res.json({ success: true, message: 'CAPTCHA bypass enabled' });
+    } catch (error) {
+        console.error('❌ Error enabling CAPTCHA bypass:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // Start the server
 app.listen(PORT, () => {
