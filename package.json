@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "build": "npm install",
-    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp && chmod +x yt-dlp"
+    "postinstall": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp.exe"
   },
   "keywords": [
     "video-downloader",
@@ -17,8 +17,8 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "@distube/ytdl-core": "^4.13.3",
-    "@distube/ytpl": "^2.3.3",
+    "@distube/ytdl-core": "^4.16.12",
+    "@distube/ytpl": "^1.2.3",
     "archiver": "^6.0.1",
     "axios": "^1.6.2",
     "cheerio": "^1.0.0-rc.12",
