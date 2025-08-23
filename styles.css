@@ -2807,6 +2807,41 @@ body {
     line-height: 1.4;
 }
 
+/* General Notification Styles */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--secondary-bg);
+    border: 2px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 15px 20px;
+    color: var(--text-color);
+    font-weight: 600;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    animation: slideInRight 0.3s ease;
+    max-width: 400px;
+}
+
+.notification.success {
+    border-color: var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.notification.error {
+    border-color: var(--error-color);
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.notification.info {
+    border-color: var(--accent-color);
+    background: rgba(100, 149, 237, 0.1);
+}
+
 @keyframes slideInRight {
     from {
         opacity: 0;
