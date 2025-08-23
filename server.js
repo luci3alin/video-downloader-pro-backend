@@ -21,12 +21,7 @@ const { Vimeo } = require('@vimeo/vimeo');
 // YouTube API Key for fallback (all restrictions removed)
 const YOUTUBE_API_KEY = 'AIzaSyDATZtBCDsSV1Bjb8xNZmQpZBtLhTJ-htk';
 
-// Enhanced anti-bot detection v2.0 - Cookie-based authentication and timing randomization
-const COOKIES = [
-    'CONSENT=YES+cb.20231231-07-p0.en+FX+410; Domain=.youtube.com; Path=/',
-    'CONSENT=YES+cb.20240101-08-p0.en+FX+410; Domain=.youtube.com; Path=/',
-    'CONSENT=YES+cb.20240102-09-p0.en+FX+410; Domain=.youtube.com; Path=/'
-];
+// Enhanced anti-bot detection v2.0 - Timing randomization and User-Agent rotation
 
 // Enhanced User-Agent rotation with more realistic browsers
 const USER_AGENTS = [
@@ -46,10 +41,7 @@ function getRandomUserAgent() {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-// Function to get random cookie
-function getRandomCookie() {
-    return COOKIES[Math.floor(Math.random() * COOKIES.length)];
-}
+
 
 // Function to add random delay (anti-bot timing)
 function getRandomDelay() {
@@ -88,7 +80,6 @@ function getEnhancedHeaders() {
         'Sec-Fetch-Site': 'none',
         'Sec-Fetch-User': '?1',
         'Cache-Control': 'max-age=0',
-        'Cookie': getRandomCookie(),
         'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
         'Sec-Ch-Ua-Mobile': '?0',
         'Sec-Ch-Ua-Platform': '"Windows"',
@@ -419,7 +410,6 @@ app.post('/api/download-playlist', async (req, res) => {
                                       '--no-progress',
                                       '--quiet',
                                       '--user-agent', getRandomUserAgent(),
-                                      '--add-header', `Cookie:${getRandomCookie()}`,
                                       '--no-check-certificates',
                                       '--prefer-insecure',
                                       ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
@@ -1132,7 +1122,6 @@ async function getYouTubeInfoViaYtDlp(url) {
                 '--quiet',
                 '--no-warnings',
                 '--user-agent', getRandomUserAgent(),
-                '--add-header', `Cookie:${getRandomCookie()}`,
                 '--no-check-certificates',
                 '--prefer-insecure',
                 '--extractor-args', 'youtube:player_client=android',
@@ -1514,7 +1503,6 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--quiet',
             // Enhanced anti-bot detection v2.0
             '--user-agent', getRandomUserAgent(),
-            '--add-header', `Cookie:${getRandomCookie()}`,
             '--no-check-certificates',
             '--prefer-insecure',
             '--extractor-args', 'youtube:player_client=android',
