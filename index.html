@@ -26,8 +26,107 @@
                 <button class="theme-btn" data-theme="dark" title="Dark Theme">
                     <i class="fas fa-moon"></i>
                 </button>
+                <button class="theme-btn" data-theme="sunset" title="Sunset Theme">
+                    <i class="fas fa-sun"></i>
+                </button>
             </div>
         </header>
+
+        <!-- Cookies Section - Simple and Direct -->
+        <div id="cookiesSection" class="cookies-section" style="display: none;">
+            <div class="cookies-container">
+                <h3><i class="fas fa-shield-alt"></i> YouTube Cookies Setup</h3>
+                <p>To download YouTube videos, we need your YouTube cookies to bypass bot detection.</p>
+                
+                <div class="cookies-instructions">
+                    <h4>How to get cookies:</h4>
+                    <ol>
+                        <li>Go to <a href="https://youtube.com" target="_blank">YouTube.com</a> in your browser</li>
+                        <li>Make sure you're logged in</li>
+                        <li>Press F12 to open Developer Tools</li>
+                        <li>Go to Application/Storage → Cookies → youtube.com</li>
+                        <li>Copy the value of these cookies: <code>CONSENT</code>, <code>VISITOR_INFO1_LIVE</code>, <code>YSC</code></li>
+                    </ol>
+                </div>
+                
+                <div class="cookies-form">
+                    <div class="input-group">
+                        <label for="consentCookie">CONSENT Cookie:</label>
+                        <input type="text" id="consentCookie" placeholder="YES+cb.20241231-19-p0.en+FX+425">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="visitorCookie">VISITOR_INFO1_LIVE Cookie:</label>
+                        <input type="text" id="visitorCookie" placeholder="v1234567890">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="yscCookie">YSC Cookie:</label>
+                        <input type="text" id="yscCookie" placeholder="1234567890abcdef">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="loginInfoCookie">LOGIN_INFO Cookie (optional):</label>
+                        <input type="text" id="loginInfoCookie" placeholder="AFmmF2swRQIhAJ">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="sidCookie">SID Cookie (optional):</label>
+                        <input type="text" id="sidCookie" placeholder="OQjWNV_abc123">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="hsidCookie">HSID Cookie (optional):</label>
+                        <input type="text" id="hsidCookie" placeholder="AbC123dEf456">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="ssidCookie">SSID Cookie (optional):</label>
+                        <input type="text" id="ssidCookie" placeholder="GhI789jKl012">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="apisidCookie">APISID Cookie (optional):</label>
+                        <input type="text" id="apisidCookie" placeholder="MnO345pQr678">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="sapisidCookie">SAPISID Cookie (optional):</label>
+                        <input type="text" id="sapisidCookie" placeholder="StU901vWx234">
+                    </div>
+                    
+                    <div class="cookies-note">
+                        <p><strong>💡 PRO TIP IMPORTANT:</strong> Pentru a evita bot detection, copiază TOATE cookies-urile din browser-ul tău! Cu cât mai multe, cu atât mai bine!</p>
+                        <p><strong>🔍 Cum să obții cookies:</strong></p>
+                        <ol>
+                            <li>Deschide <a href="https://youtube.com" target="_blank">YouTube.com</a> în browser</li>
+                            <li>Fă-te logat cu contul tău Google</li>
+                            <li>Apasă F12 → Application → Storage → Cookies → youtube.com</li>
+                            <li>Copiază valorile pentru CONSENT, VISITOR_INFO1_LIVE, YSC și toate celelalte</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="cookies-buttons">
+                        <button id="saveCookiesBtn" class="save-btn">
+                            <i class="fas fa-save"></i>
+                            Save Cookies
+                        </button>
+                        <button id="testCookiesBtn" class="test-btn">
+                            <i class="fas fa-vial"></i>
+                            Test Cookies
+                        </button>
+                        <button id="noCookiesModeBtn" class="nocookies-btn">
+                            <i class="fas fa-robot"></i>
+                            CAPTCHA Bypass Mode
+                        </button>
+                        <button id="skipCookiesBtn" class="skip-btn">
+                            <i class="fas fa-times"></i>
+                            Skip
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -68,6 +167,10 @@
                             Reset Cookies
                         </button>
                         
+                        <button type="button" id="acceptCookiesBtn" class="accept-cookies-btn">
+                            <i class="fas fa-shield-alt"></i>
+                            Accept Cookies
+                        </button>
                     </form>
                 </div>
             </div>
