@@ -1426,52 +1426,54 @@ class VideoDownloader {
     
     // Cookies Modal Functions
     showCookiesSection() {
-        const section = document.getElementById('cookiesSection');
-        if (section) {
-            section.style.display = 'block';
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            cookiesSection.style.display = 'block';
             
-            // Add event listeners for buttons
+            // Initialize events
             this.initializeCookiesSectionEvents();
             
-            // Debug log
+            // Auto-fill any cookies we found
+            this.autoFillCookieInputs();
+            
+            // Show helpful instructions
+            this.showCookieInstructions();
+            
             console.log('🔍 Cookies section displayed');
-            console.log('🔍 Section element:', section);
         } else {
             console.error('❌ Cookies section not found!');
         }
     }
     
     hideCookiesSection() {
-        const section = document.getElementById('cookiesSection');
-        if (section) {
-            section.style.display = 'none';
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            cookiesSection.style.display = 'none';
+            console.log('🔍 Cookies section hidden');
         }
     }
     
     initializeCookiesSectionEvents() {
+        console.log('🔍 Initializing cookies section events...');
+        
         const saveBtn = document.getElementById('saveCookiesBtn');
+        const testBtn = document.getElementById('testCookiesBtn');
         const skipBtn = document.getElementById('skipCookiesBtn');
         
-        console.log('🔍 Initializing cookies section events...');
         console.log('🔍 Save button found:', !!saveBtn);
+        console.log('🔍 Test button found:', !!testBtn);
         console.log('🔍 Skip button found:', !!skipBtn);
         
         if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
-                console.log('🔍 Save cookies button clicked');
-                this.saveCookiesPermission();
-            });
-        } else {
-            console.error('❌ Save cookies button not found!');
+            saveBtn.addEventListener('click', () => this.saveCookiesPermission());
+        }
+        
+        if (testBtn) {
+            testBtn.addEventListener('click', () => this.testCurrentCookies());
         }
         
         if (skipBtn) {
-            skipBtn.addEventListener('click', () => {
-                console.log('🔍 Skip cookies button clicked');
-                this.skipCookiesPermission();
-            });
-        } else {
-            console.error('❌ Skip cookies button not found!');
+            skipBtn.addEventListener('click', () => this.skipCookiesPermission());
         }
     }
     
@@ -1559,12 +1561,15 @@ class VideoDownloader {
         console.log('🔍 Accepting cookies automatically from browser...');
         
         try {
-            // Try to get cookies from current domain (if on YouTube)
-            if (window.location.hostname.includes('youtube.com')) {
-                this.extractCookiesFromYouTube();
+            // Always try to extract cookies from current page first
+            const extractedCookies = this.extractCookiesFromCurrentPage();
+            
+            if (extractedCookies && Object.keys(extractedCookies).length > 0) {
+                console.log('✅ Found cookies on current page:', extractedCookies);
+                this.saveAndUseCookies(extractedCookies);
             } else {
-                // If not on YouTube, try to get cookies from any YouTube tab
-                this.extractCookiesFromBrowser();
+                console.log('❌ No cookies found on current page, trying alternative methods...');
+                this.tryAlternativeCookieExtraction();
             }
         } catch (error) {
             console.error('❌ Error extracting cookies:', error);
@@ -1573,63 +1578,118 @@ class VideoDownloader {
         }
     }
     
-    extractCookiesFromYouTube() {
-        console.log('🔍 Extracting cookies from YouTube page...');
+    extractCookiesFromCurrentPage() {
+        console.log('🔍 Extracting cookies from current page...');
+        console.log('🔍 Current URL:', window.location.href);
+        console.log('🔍 Current hostname:', window.location.hostname);
         
-        // Get all cookies from current YouTube page
-        const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-            const [name, value] = cookie.trim().split('=');
-            if (name && value) {
-                acc[name] = value;
+        // Try multiple methods to get cookies
+        const cookies = {};
+        
+        // Method 1: document.cookie (basic cookies)
+        try {
+            const basicCookies = document.cookie.split(';').reduce((acc, cookie) => {
+                const [name, value] = cookie.trim().split('=');
+                if (name && value) {
+                    acc[name.trim()] = value.trim();
+                }
+                return acc;
+            }, {});
+            
+            console.log('🔍 Basic cookies from document.cookie:', basicCookies);
+            Object.assign(cookies, basicCookies);
+        } catch (error) {
+            console.log('❌ Error reading basic cookies:', error);
+        }
+        
+        // Method 2: Try to access localStorage for any stored cookies
+        try {
+            const storedCookies = localStorage.getItem('youtubeCookies');
+            if (storedCookies) {
+                const parsed = JSON.parse(storedCookies);
+                console.log('🔍 Found stored cookies in localStorage:', parsed);
+                Object.assign(cookies, parsed);
             }
-            return acc;
-        }, {});
+        } catch (error) {
+            console.log('❌ Error reading stored cookies:', error);
+        }
         
-        console.log('🔍 Found cookies:', cookies);
+        // Method 3: Try to access sessionStorage
+        try {
+            const sessionCookies = sessionStorage.getItem('youtubeCookies');
+            if (sessionCookies) {
+                const parsed = JSON.parse(sessionCookies);
+                console.log('🔍 Found cookies in sessionStorage:', parsed);
+                Object.assign(cookies, parsed);
+            }
+        } catch (error) {
+            console.log('❌ Error reading session cookies:', error);
+        }
         
-        // Extract important YouTube cookies
-        const importantCookies = {
-            CONSENT: cookies.CONSENT || cookies['__Secure-CONSENT'],
-            VISITOR_INFO1_LIVE: cookies.VISITOR_INFO1_LIVE,
-            YSC: cookies.YSC,
-            LOGIN_INFO: cookies.LOGIN_INFO,
-            SID: cookies.SID,
-            HSID: cookies.HSID,
-            SSID: cookies.SSID,
-            APISID: cookies.APISID,
-            SAPISID: cookies.SAPISID
-        };
+        console.log('🔍 All extracted cookies:', cookies);
         
-        // Check if we have the required cookies
-        if (importantCookies.CONSENT && importantCookies.VISITOR_INFO1_LIVE && importantCookies.YSC) {
-            console.log('✅ Found required cookies, saving them...');
-            this.saveAndUseCookies(importantCookies);
+        // Check if we have any useful cookies
+        const hasAnyCookies = Object.keys(cookies).length > 0;
+        const hasRequiredCookies = cookies.CONSENT || cookies.VISITOR_INFO1_LIVE || cookies.YSC;
+        
+        console.log('🔍 Has any cookies:', hasAnyCookies);
+        console.log('🔍 Has required cookies:', hasRequiredCookies);
+        
+        if (hasAnyCookies) {
+            return cookies;
+        }
+        
+        return null;
+    }
+    
+    tryAlternativeCookieExtraction() {
+        console.log('🔍 Trying alternative cookie extraction methods...');
+        
+        // Check if we're on YouTube domain
+        if (window.location.hostname.includes('youtube.com') || 
+            window.location.hostname.includes('youtu.be') ||
+            window.location.href.includes('youtube.com')) {
+            
+            console.log('🔍 On YouTube domain, showing manual extraction instructions...');
+            this.showNotification('🔍 You are on YouTube! However, some cookies are protected and cannot be accessed automatically. Please copy them manually from your browser.', 'info');
+            this.showCookiesSection();
+            
+            // Try to help user by showing what cookies we can see
+            this.showVisibleCookies();
         } else {
-            console.log('❌ Missing required cookies, showing manual input');
-            this.showNotification('❌ Could not find required cookies on this page. Please go to YouTube.com and try again.', 'error');
+            console.log('🔍 Not on YouTube domain, showing general instructions...');
+            this.showNotification('❌ Please go to YouTube.com, log in, then come back and try again.', 'error');
             this.showCookiesSection();
         }
     }
     
-    extractCookiesFromBrowser() {
-        console.log('🔍 Trying to extract cookies from browser...');
+    showVisibleCookies() {
+        console.log('🔍 Showing visible cookies to help user...');
         
-        // Try to get cookies from localStorage if they exist
-        const storedCookies = localStorage.getItem('youtubeCookies');
-        if (storedCookies) {
-            try {
-                const cookies = JSON.parse(storedCookies);
-                console.log('✅ Found stored cookies, using them...');
-                this.saveAndUseCookies(cookies);
-                return;
-            } catch (error) {
-                console.log('❌ Error parsing stored cookies');
+        try {
+            const visibleCookies = document.cookie;
+            if (visibleCookies) {
+                console.log('🔍 Visible cookies on this page:', visibleCookies);
+                
+                // Parse and display them in a helpful way
+                const cookieList = visibleCookies.split(';').map(cookie => {
+                    const [name, value] = cookie.trim().split('=');
+                    return { name: name.trim(), value: value.trim() };
+                });
+                
+                console.log('🔍 Parsed visible cookies:', cookieList);
+                
+                // Show notification with cookie info
+                const cookieNames = cookieList.map(c => c.name).join(', ');
+                this.showNotification(`🔍 Found cookies: ${cookieNames}. Some may be protected. Please copy ALL cookies manually.`, 'info');
+            } else {
+                console.log('🔍 No visible cookies on this page');
+                this.showNotification('🔍 No visible cookies found. YouTube may be blocking access. Please copy cookies manually from F12 → Application → Cookies.', 'info');
             }
+        } catch (error) {
+            console.log('❌ Error showing visible cookies:', error);
+            this.showNotification('🔍 Please copy cookies manually from F12 → Application → Cookies → youtube.com', 'info');
         }
-        
-        // If no stored cookies, show instructions
-        this.showNotification('❌ No cookies found. Please go to YouTube.com, log in, then come back and try again.', 'error');
-        this.showCookiesSection();
     }
     
     saveAndUseCookies(cookies) {
@@ -1643,16 +1703,48 @@ class VideoDownloader {
         // Send to server
         this.sendCookiesToServer(cookies);
         
+        // Test if cookies work
+        this.testCookies(cookies);
+        
         // Show success message
-        this.showNotification('✅ Cookies extracted and saved successfully! YouTube downloads should work now!', 'success');
+        this.showNotification('✅ Cookies extracted and saved successfully! Testing if they work...', 'success');
         
         // Hide cookies section
         this.hideCookiesSection();
     }
     
+    testCookies(cookies) {
+        console.log('🧪 Testing if cookies work...');
+        
+        // Make a simple test request to see if cookies are valid
+        fetch('/test-cookies', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cookies })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Cookie test successful:', data.message);
+                this.showNotification('✅ Cookies are working! YouTube downloads should work now!', 'success');
+            } else {
+                console.log('❌ Cookie test failed:', data.message);
+                this.showNotification('⚠️ Cookies may not be working properly. Try getting fresh cookies from YouTube.', 'warning');
+            }
+        })
+        .catch(error => {
+            console.log('❌ Cookie test error:', error);
+            this.showNotification('⚠️ Could not test cookies. They may still work for downloads.', 'warning');
+        });
+    }
+    
     async sendCookiesToServer(cookies) {
         try {
-            const response = await fetch('/api/update-cookies', {
+            console.log('📤 Sending cookies to server...');
+            
+            const response = await fetch('/update-cookies', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1661,9 +1753,10 @@ class VideoDownloader {
             });
             
             if (response.ok) {
-                console.log('✅ Cookies sent to server successfully');
+                const data = await response.json();
+                console.log('✅ Cookies updated from frontend:', data.cookies);
             } else {
-                console.error('❌ Failed to send cookies to server');
+                console.error('❌ Failed to send cookies to server:', response.status);
             }
         } catch (error) {
             console.error('❌ Error sending cookies to server:', error);
@@ -1671,53 +1764,22 @@ class VideoDownloader {
     }
     
     skipCookiesPermission() {
-        // Save permission to localStorage
+        console.log('🔍 Skipping cookies permission...');
         localStorage.setItem('cookiesPermission', 'skipped');
-        
-        // Show info message
-        this.showCookiesInfo();
-        
-        // Hide cookies section
+        this.cookiesPermissionGranted = false;
         this.hideCookiesSection();
-    }
-    
-    showCookiesSuccess() {
-        // Create success notification
-        const notification = document.createElement('div');
-        notification.className = 'cookies-notification success';
-        notification.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            <span>YouTube cookies saved successfully! Downloads should work better now.</span>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 5000);
+        this.showCookiesInfo();
     }
     
     showCookiesInfo() {
-        // Create info notification
-        const notification = document.createElement('div');
-        notification.className = 'cookies-notification info';
-        notification.innerHTML = `
-            <i class="fas fa-info-circle"></i>
-            <span>Cookies skipped. YouTube downloads may fail due to bot detection.</span>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 5000);
+        this.showNotification('⚠️ Cookies skipped. YouTube downloads may not work properly. You can always set cookies later using the "Accept Cookies" button.', 'warning');
     }
+    
+    showCookiesSuccess() {
+        this.showNotification('✅ Cookies saved successfully! YouTube downloads should work now.', 'success');
+    }
+    
+
     
     showNotification(message, type = 'info') {
         // Create notification
@@ -1736,6 +1798,96 @@ class VideoDownloader {
                 notification.parentNode.removeChild(notification);
             }
         }, 5000);
+    }
+
+    autoFillCookieInputs() {
+        // Try to auto-fill any cookies we found
+        const storedCookies = localStorage.getItem('youtubeCookies');
+        if (storedCookies) {
+            try {
+                const cookies = JSON.parse(storedCookies);
+                console.log('🔍 Auto-filling cookie inputs with stored values:', cookies);
+                
+                // Fill in any available cookies
+                if (cookies.CONSENT) document.getElementById('consentCookie').value = cookies.CONSENT;
+                if (cookies.VISITOR_INFO1_LIVE) document.getElementById('visitorCookie').value = cookies.VISITOR_INFO1_LIVE;
+                if (cookies.YSC) document.getElementById('yscCookie').value = cookies.YSC;
+                if (cookies.LOGIN_INFO) document.getElementById('loginInfoCookie').value = cookies.LOGIN_INFO;
+                if (cookies.SID) document.getElementById('sidCookie').value = cookies.SID;
+                if (cookies.HSID) document.getElementById('hsidCookie').value = cookies.HSID;
+                if (cookies.SSID) document.getElementById('ssidCookie').value = cookies.SSID;
+                if (cookies.APISID) document.getElementById('apisidCookie').value = cookies.APISID;
+                if (cookies.SAPISID) document.getElementById('sapisidCookie').value = cookies.SAPISID;
+                
+                console.log('✅ Auto-filled cookie inputs');
+            } catch (error) {
+                console.log('❌ Error auto-filling cookies:', error);
+            }
+        }
+    }
+    
+    showCookieInstructions() {
+        // Show detailed instructions for getting cookies
+        const instructions = `
+            <div class="cookie-instructions">
+                <h3>🔍 How to get YouTube cookies:</h3>
+                <ol>
+                    <li><strong>Go to YouTube.com</strong> and make sure you're logged in</li>
+                    <li><strong>Press F12</strong> to open Developer Tools</li>
+                    <li><strong>Go to Application tab</strong> → Storage → Cookies → youtube.com</li>
+                    <li><strong>Copy these cookies:</strong>
+                        <ul>
+                            <li><code>CONSENT</code> - Required for basic access</li>
+                            <li><code>VISITOR_INFO1_LIVE</code> - Required for video access</li>
+                            <li><code>YSC</code> - Required for video access</li>
+                            <li><code>LOGIN_INFO</code> - Helps with authentication</li>
+                            <li><code>SID, HSID, SSID, APISID, SAPISID</code> - Additional security</li>
+                        </ul>
+                    </li>
+                    <li><strong>Paste them in the fields above</strong> and click "Save Cookies"</li>
+                </ol>
+                <p><strong>💡 Tip:</strong> The more cookies you provide, the better the download success rate!</p>
+            </div>
+        `;
+        
+        // Find the instructions container or create one
+        let instructionsContainer = document.querySelector('.cookie-instructions');
+        if (!instructionsContainer) {
+            const cookiesSection = document.getElementById('cookiesSection');
+            if (cookiesSection) {
+                const div = document.createElement('div');
+                div.innerHTML = instructions;
+                cookiesSection.appendChild(div);
+            }
+        }
+    }
+
+    testCurrentCookies() {
+        console.log('🧪 Testing current cookies...');
+        
+        // Get cookies from input fields
+        const cookies = {
+            CONSENT: document.getElementById('consentCookie').value.trim(),
+            VISITOR_INFO1_LIVE: document.getElementById('visitorCookie').value.trim(),
+            YSC: document.getElementById('yscCookie').value.trim(),
+            LOGIN_INFO: document.getElementById('loginInfoCookie').value.trim(),
+            SID: document.getElementById('sidCookie').value.trim(),
+            HSID: document.getElementById('hsidCookie').value.trim(),
+            SSID: document.getElementById('ssidCookie').value.trim(),
+            APISID: document.getElementById('apisidCookie').value.trim(),
+            SAPISID: document.getElementById('sapisidCookie').value.trim()
+        };
+        
+        if (!cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
+            this.showNotification('❌ Please fill in the required cookie fields first (CONSENT, VISITOR_INFO1_LIVE, YSC)', 'error');
+            return;
+        }
+        
+        // Show testing notification
+        this.showNotification('🧪 Testing cookies... Please wait...', 'info');
+        
+        // Test the cookies
+        this.testCookies(cookies);
     }
 }
 

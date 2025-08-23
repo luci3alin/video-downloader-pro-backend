@@ -2427,6 +2427,174 @@ async function downloadVimeo(url, quality, format) {
     }
 }
 
+// Test cookies endpoint
+app.post('/test-cookies', async (req, res) => {
+    try {
+        const { cookies } = req.body;
+        
+        if (!cookies || !cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
+            return res.json({
+                success: false,
+                message: 'Missing required cookies (CONSENT, VISITOR_INFO1_LIVE, YSC)'
+            });
+        }
+        
+        console.log('🧪 Testing cookies:', Object.keys(cookies));
+        
+        // Try to make a simple request to YouTube with these cookies
+        try {
+            const cookieFile = createTestCookieFile(cookies);
+            
+            // Test with yt-dlp to see if cookies work
+            const testResult = await testYoutubeCookies(cookieFile);
+            
+            // Clean up test file
+            try {
+                fs.unlinkSync(cookieFile);
+            } catch (e) {
+                console.log('Could not delete test cookie file');
+            }
+            
+            if (testResult.success) {
+                res.json({
+                    success: true,
+                    message: 'Cookies are working! YouTube access confirmed.',
+                    details: testResult.details
+                });
+            } else {
+                res.json({
+                    success: false,
+                    message: 'Cookies failed YouTube access test. They may be expired or invalid.',
+                    details: testResult.details
+                });
+            }
+            
+        } catch (error) {
+            console.error('❌ Cookie test error:', error);
+            res.json({
+                success: false,
+                message: 'Could not test cookies due to server error',
+                error: error.message
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Test cookies endpoint error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while testing cookies',
+            error: error.message
+        });
+    }
+});
+
+function createTestCookieFile(cookies) {
+    const fs = require('fs');
+    const cookieFile = './test_cookies.txt';
+    
+    const netscapeCookies = `# Netscape HTTP Cookie File
+# Test cookies for YouTube access verification
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${cookies.CONSENT}
+.youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${cookies.VISITOR_INFO1_LIVE}
+.youtube.com	TRUE	/	FALSE	1735689600	YSC	${cookies.YSC}
+.youtube.com	TRUE	/	FALSE	1735689600	GPS	1
+.youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
+.youtube.com	TRUE	/	FALSE	1735689600	LOGIN_INFO	${cookies.LOGIN_INFO || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	SID	${cookies.SID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	HSID	${cookies.HSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	SSID	${cookies.SSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	APISID	${cookies.APISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	SAPISID	${cookies.SAPISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PAPISID	${cookies.SECURE_1PAPISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PAPISID	${cookies.SECURE_3PAPISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSID	${cookies.SECURE_1PSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSID	${cookies.SECURE_3PSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSIDCC	${cookies.SECURE_1PSIDCC || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSIDCC	${cookies.SECURE_3PSIDCC || ''}
+`;
+    
+    fs.writeFileSync(cookieFile, netscapeCookies);
+    return cookieFile;
+}
+
+async function testYoutubeCookies(cookieFile) {
+    return new Promise((resolve) => {
+        const { spawn } = require('child_process');
+        
+        // Test with a simple video info request
+        const ytDlpArgs = [
+            '--no-progress',
+            '--quiet',
+            '--cookies', cookieFile,
+            '--no-check-certificate',
+            '--prefer-insecure',
+            '--extractor-args', 'youtube:player_client=android',
+            '--extractor-args', 'youtube:player_skip=webpage',
+            'https://www.youtube.com/watch?v=dQw4w9WgXcQ' // Rick Roll video for testing
+        ];
+        
+        console.log('🧪 Testing cookies with yt-dlp:', ytDlpArgs.join(' '));
+        
+        const ytDlpProcess = spawn('./yt-dlp', ytDlpArgs);
+        
+        let stdout = '';
+        let stderr = '';
+        
+        ytDlpProcess.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+        
+        ytDlpProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+        
+        ytDlpProcess.on('close', (code) => {
+            console.log('🧪 yt-dlp test process exited with code:', code);
+            console.log('🧪 Test stdout:', stdout);
+            console.log('🧪 Test stderr:', stderr);
+            
+            if (code === 0 && stdout.includes('title')) {
+                resolve({
+                    success: true,
+                    details: 'Successfully retrieved video information with provided cookies'
+                });
+            } else if (stderr.includes('Sign in to confirm you\'re not a bot')) {
+                resolve({
+                    success: false,
+                    details: 'YouTube detected bot activity - cookies may be invalid or expired'
+                });
+            } else if (stderr.includes('Video unavailable')) {
+                resolve({
+                    success: false,
+                    details: 'Video unavailable - cookies may not have proper access'
+                });
+            } else {
+                resolve({
+                    success: false,
+                    details: `yt-dlp failed with code ${code}: ${stderr}`
+                });
+            }
+        });
+        
+        ytDlpProcess.on('error', (error) => {
+            console.error('🧪 yt-dlp test process error:', error);
+            resolve({
+                success: false,
+                details: `Process error: ${error.message}`
+            });
+        });
+        
+        // Timeout after 30 seconds
+        setTimeout(() => {
+            ytDlpProcess.kill();
+            resolve({
+                success: false,
+                details: 'Test timed out after 30 seconds'
+            });
+        }, 30000);
+    });
+}
+
 // Start the server
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
