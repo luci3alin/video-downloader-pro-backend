@@ -419,7 +419,7 @@ app.post('/api/download-playlist', async (req, res) => {
                                       '--no-progress',
                                       '--quiet',
                                       '--user-agent', getRandomUserAgent(),
-                                      '--cookies-from-browser', 'chrome',
+                                      '--add-header', `Cookie:${getRandomCookie()}`,
                                       '--no-check-certificates',
                                       '--prefer-insecure',
                                       ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
@@ -1132,7 +1132,7 @@ async function getYouTubeInfoViaYtDlp(url) {
                 '--quiet',
                 '--no-warnings',
                 '--user-agent', getRandomUserAgent(),
-                '--cookies-from-browser', 'chrome',
+                '--add-header', `Cookie:${getRandomCookie()}`,
                 '--no-check-certificates',
                 '--prefer-insecure',
                 '--extractor-args', 'youtube:player_client=android',
@@ -1514,7 +1514,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--quiet',
             // Enhanced anti-bot detection v2.0
             '--user-agent', getRandomUserAgent(),
-            '--cookies-from-browser', 'chrome',
+            '--add-header', `Cookie:${getRandomCookie()}`,
             '--no-check-certificates',
             '--prefer-insecure',
             '--extractor-args', 'youtube:player_client=android',
@@ -1540,7 +1540,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         ytDlpProcess.on('exit', (code, signal) => {
             console.log(`🔚 yt-dlp process exited with code ${code}, signal ${signal}`);
             if (code !== 0) {
-                console.error('❌ yt-dlp process failed with non-zero exit code');
+                console.log('⚠️ yt-dlp process ended with non-zero exit code (may be due to missing browser cookies)');
             }
         });
         
@@ -1552,8 +1552,10 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             console.error('❌ Enhanced yt-dlp v2.0 stream error:', error);
         });
         
+        let totalBytes = 0;
         downloadStream.on('data', (chunk) => {
-            console.log(`📥 Enhanced yt-dlp v2.0 data chunk: ${chunk.length} bytes`);
+            totalBytes += chunk.length;
+            console.log(`📥 Enhanced yt-dlp v2.0 data chunk: ${chunk.length} bytes (total: ${totalBytes} bytes)`);
         });
         
         downloadStream.on('end', () => {
