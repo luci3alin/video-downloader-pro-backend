@@ -14,8 +14,8 @@ class VideoDownloader {
             this.initializePlatformAttributes();
         }, 100);
         
-        // Initialize reset cookies button
-        this.initializeResetCookiesButton();
+        // Initialize cookies buttons
+        this.initializeCookiesButtons();
 
         // Show cookies section if permission not granted OR if cookies are missing
         if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
@@ -1475,13 +1475,25 @@ class VideoDownloader {
         }
     }
     
-    initializeResetCookiesButton() {
+    initializeCookiesButtons() {
         const resetBtn = document.getElementById('resetCookiesBtn');
+        const acceptBtn = document.getElementById('acceptCookiesBtn');
+        
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
                 this.resetCookies();
             });
         }
+        
+        if (acceptBtn) {
+            acceptBtn.addEventListener('click', () => {
+                this.showCookiesSection();
+            });
+        }
+        
+        console.log('🔍 Cookies buttons initialized');
+        console.log('🔍 Reset button found:', !!resetBtn);
+        console.log('🔍 Accept button found:', !!acceptBtn);
     }
     
     resetCookies() {

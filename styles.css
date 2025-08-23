@@ -1967,6 +1967,31 @@ body {
     box-shadow: 0 8px 25px rgba(230, 126, 34, 0.4);
 }
 
+/* Accept Cookies Button */
+.accept-cookies-btn {
+    background: var(--success-color);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    width: 100%;
+}
+
+.accept-cookies-btn:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+}
+
 /* Cookies Modal Responsive */
 @media (max-width: 768px) {
     .cookies-modal.show {
@@ -2321,7 +2346,9 @@ body {
     margin: 30px auto;
     max-width: 600px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 2px solid var(--primary-color);
+    position: relative;
+    z-index: 1000;
 }
 
 .cookies-container h3 {
@@ -2656,19 +2683,11 @@ body {
     box-shadow: 0 8px 25px rgba(244, 67, 54, 0.3);
 }
 
-/* Dark Theme Cookies Modal */
-[data-theme="dark"] .cookies-content {
+/* Dark Theme Cookies Section */
+[data-theme="dark"] .cookies-section {
     background: #1a1a1a;
-    border: 1px solid #333;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-}
-
-[data-theme="dark"] .cookies-modal {
-    background: rgba(0, 0, 0, 0.9);
-}
-
-[data-theme="dark"] .cookies-modal.show {
-    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #8b5cf6;
+    box-shadow: 0 20px 60px rgba(139, 92, 246, 0.3);
 }
 
 [data-theme="dark"] .cookies-input input {
@@ -2691,13 +2710,10 @@ body {
     background: rgba(255, 152, 0, 0.1);
 }
 
-/* Sunset Theme Cookies Modal */
-[data-theme="sunset"] .cookies-header {
-    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
-}
-
-[data-theme="sunset"] .cookies-modal {
-    background: rgba(255, 107, 107, 0.9);
+/* Sunset Theme Cookies Section */
+[data-theme="sunset"] .cookies-section {
+    border: 2px solid #ff6b6b;
+    box-shadow: 0 20px 60px rgba(255, 107, 107, 0.3);
 }
 
 [data-theme="sunset"] .cookies-info {
