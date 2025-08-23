@@ -28,6 +28,13 @@ const COOKIES = [
     'CONSENT=YES+cb.20240102-09-p0.en+FX+410; Domain=.youtube.com; Path=/'
 ];
 
+// yt-dlp compatible cookie format (without domain and path)
+const YTDLP_COOKIES = [
+    'CONSENT=YES+cb.20231231-07-p0.en+FX+410',
+    'CONSENT=YES+cb.20240101-08-p0.en+FX+410',
+    'CONSENT=YES+cb.20240102-09-p0.en+FX+410'
+];
+
 // Enhanced User-Agent rotation with more realistic browsers
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -49,6 +56,11 @@ function getRandomUserAgent() {
 // Function to get random cookie
 function getRandomCookie() {
     return COOKIES[Math.floor(Math.random() * COOKIES.length)];
+}
+
+// Function to get yt-dlp compatible cookie
+function getYtDlpCookie() {
+    return YTDLP_COOKIES[Math.floor(Math.random() * YTDLP_COOKIES.length)];
 }
 
 // Function to add random delay (anti-bot timing)
@@ -1086,7 +1098,7 @@ async function getYouTubeInfoViaYtDlp(url) {
         
         console.log('🔧 yt-dlp options configured with enhanced anti-bot detection');
         
-        // Get video info using yt-dlp execStream with dump-json
+        // Get video info using yt-dlp execStream with enhanced anti-bot detection v2.0
         const result = await new Promise((resolve, reject) => {
             const info = [];
             const infoStream = ytdlp.execStream([
@@ -1095,7 +1107,8 @@ async function getYouTubeInfoViaYtDlp(url) {
                 '--no-playlist',
                 '--quiet',
                 '--no-warnings',
-                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                '--user-agent', getRandomUserAgent(),
+                '--add-header', `Cookie:${getYtDlpCookie()}`,
                 '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
                 '--add-header', 'Accept-Language:en-US,en;q=0.9',
                 '--add-header', 'Accept-Encoding:gzip, deflate, br',
@@ -1107,8 +1120,13 @@ async function getYouTubeInfoViaYtDlp(url) {
                 '--add-header', 'Sec-Fetch-Site:none',
                 '--add-header', 'Sec-Fetch-User:?1',
                 '--add-header', 'Cache-Control:max-age=0',
+                '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                '--add-header', 'Sec-Ch-Ua-Mobile:?0',
+                '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
                 '--no-check-certificates',
-                '--prefer-insecure'
+                '--prefer-insecure',
+                '--extractor-args', 'youtube:player_client=android',
+                '--extractor-args', 'youtube:player_skip=webpage'
             ]);
             
             infoStream.on('data', (chunk) => {
@@ -1469,7 +1487,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--quiet',
             // Enhanced anti-bot detection v2.0
             '--user-agent', getRandomUserAgent(),
-            '--add-header', `Cookie:${getRandomCookie()}`,
+            '--add-header', `Cookie:${getYtDlpCookie()}`,
             '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
             '--add-header', 'Accept-Language:en-US,en;q=0.9,ro;q=0.8',
             '--add-header', 'Accept-Encoding:gzip, deflate, br',
