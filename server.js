@@ -41,12 +41,37 @@ function getRandomUserAgent() {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-// Function to get real YouTube cookies (authenticated browser session)
-function getRealYouTubeCookies() {
-    // For now, return null to use browser cookies extraction
-    // This will force yt-dlp to use --cookies-from-browser
-    console.log('⚠️ Using browser cookies extraction (more reliable)');
-    return null;
+// Function to get manual YouTube cookies from frontend
+function getManualCookies() {
+    // Create a temporary cookies file for yt-dlp
+    const fs = require('fs');
+    const cookieFile = './youtube_cookies.txt';
+    
+    // Default cookies if none provided
+    const defaultCookies = {
+        CONSENT: 'YES+cb.20241231-19-p0.en+FX+425',
+        VISITOR_INFO1_LIVE: 'v' + Math.random().toString(36).substring(2, 13),
+        YSC: Math.random().toString(36).substring(2, 17)
+    };
+    
+    // Create Netscape format cookies file
+    const netscapeCookies = `# Netscape HTTP Cookie File
+# This file contains YouTube cookies for authentication
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${defaultCookies.CONSENT}
+.youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${defaultCookies.VISITOR_INFO1_LIVE}
+.youtube.com	TRUE	/	FALSE	1735689600	YSC	${defaultCookies.YSC}
+.youtube.com	TRUE	/	FALSE	1735689600	GPS	1
+.youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
+`;
+    
+    try {
+        fs.writeFileSync(cookieFile, netscapeCookies);
+        console.log('✅ Created YouTube cookies file with default values');
+        return cookieFile;
+    } catch (error) {
+        console.error('⚠️ Failed to write cookies file:', error.message);
+        return null;
+    }
 }
 
 // Generate realistic session ID
@@ -428,7 +453,7 @@ app.post('/api/download-playlist', async (req, res) => {
                                       '--no-progress',
                                       '--quiet',
                                       '--user-agent', getRandomUserAgent(),
-                                      '--cookies-from-browser', 'brave',
+                                      '--cookies', getManualCookies(),
                                       '--no-check-certificates',
                                       '--prefer-insecure',
                                       ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
@@ -1141,7 +1166,7 @@ async function getYouTubeInfoViaYtDlp(url) {
                 '--quiet',
                 '--no-warnings',
                 '--user-agent', getRandomUserAgent(),
-                '--cookies-from-browser', 'brave',
+                '--cookies', getManualCookies(),
                 '--no-check-certificates',
                 '--prefer-insecure',
                 '--extractor-args', 'youtube:player_client=android',
@@ -1512,7 +1537,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         
         // Use spawn directly instead of YTDlpWrap for better control
         console.log('🔧 Using direct spawn for yt-dlp...');
-        console.log('🔐 Authentication method: Browser cookies extraction (brave)');
+        console.log('🔐 Authentication method: Manual cookies file');
         
         const ytDlpProcess = spawn(ytDlpPath, [
             url,
@@ -1522,10 +1547,10 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--no-warnings',
             '--no-progress',
             '--quiet',
-            // Enhanced anti-bot detection v2.0 with browser cookies
-            '--user-agent', getRandomUserAgent(),
-            '--cookies-from-browser', 'brave',
-            '--no-check-certificates',
+                    // Enhanced anti-bot detection v2.0 with manual cookies
+        '--user-agent', getRandomUserAgent(),
+        '--cookies', getManualCookies(),
+        '--no-check-certificates',
             '--prefer-insecure',
             '--extractor-args', 'youtube:player_client=android',
             '--extractor-args', 'youtube:player_skip=webpage',

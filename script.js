@@ -1439,24 +1439,41 @@ class VideoDownloader {
     }
     
     initializeCookiesModalEvents() {
-        const grantBtn = document.getElementById('grantCookiesBtn');
-        const denyBtn = document.getElementById('denyCookiesBtn');
+        const saveBtn = document.getElementById('saveCookiesBtn');
+        const skipBtn = document.getElementById('skipCookiesBtn');
         
-        if (grantBtn) {
-            grantBtn.addEventListener('click', () => {
-                this.grantCookiesPermission();
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                this.saveCookiesPermission();
             });
         }
         
-        if (denyBtn) {
-            denyBtn.addEventListener('click', () => {
-                this.denyCookiesPermission();
+        if (skipBtn) {
+            skipBtn.addEventListener('click', () => {
+                this.skipCookiesPermission();
             });
         }
     }
     
-    grantCookiesPermission() {
-        // Save permission to localStorage
+    saveCookiesPermission() {
+        // Get cookie values from inputs
+        const consentCookie = document.getElementById('consentCookie').value.trim();
+        const visitorCookie = document.getElementById('visitorCookie').value.trim();
+        const yscCookie = document.getElementById('yscCookie').value.trim();
+        
+        if (!consentCookie || !visitorCookie || !yscCookie) {
+            alert('Please fill in all cookie fields');
+            return;
+        }
+        
+        // Save cookies to localStorage
+        const cookies = {
+            CONSENT: consentCookie,
+            VISITOR_INFO1_LIVE: visitorCookie,
+            YSC: yscCookie
+        };
+        
+        localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
         localStorage.setItem('cookiesPermission', 'granted');
         this.cookiesPermissionGranted = true;
         
@@ -1467,12 +1484,12 @@ class VideoDownloader {
         this.hideCookiesModal();
     }
     
-    denyCookiesPermission() {
+    skipCookiesPermission() {
         // Save permission to localStorage
-        localStorage.setItem('cookiesPermission', 'denied');
+        localStorage.setItem('cookiesPermission', 'skipped');
         
-        // Show warning message
-        this.showCookiesWarning();
+        // Show info message
+        this.showCookiesInfo();
         
         // Hide modal
         this.hideCookiesModal();
@@ -1484,7 +1501,7 @@ class VideoDownloader {
         notification.className = 'cookies-notification success';
         notification.innerHTML = `
             <i class="fas fa-check-circle"></i>
-            <span>Cookies permission granted! YouTube downloads should work better now.</span>
+            <span>YouTube cookies saved successfully! Downloads should work better now.</span>
         `;
         
         document.body.appendChild(notification);
@@ -1497,13 +1514,13 @@ class VideoDownloader {
         }, 5000);
     }
     
-    showCookiesWarning() {
-        // Create warning notification
+    showCookiesInfo() {
+        // Create info notification
         const notification = document.createElement('div');
-        notification.className = 'cookies-notification warning';
+        notification.className = 'cookies-notification info';
         notification.innerHTML = `
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Cookies permission denied. YouTube downloads may fail due to bot detection.</span>
+            <i class="fas fa-info-circle"></i>
+            <span>Cookies skipped. YouTube downloads may fail due to bot detection.</span>
         `;
         
         document.body.appendChild(notification);

@@ -40,29 +40,37 @@
                     <h2>Cookies Permission Required</h2>
                 </div>
                 <div class="cookies-body">
-                    <p>To download YouTube videos, we need access to your browser cookies for authentication. This helps bypass YouTube's bot detection.</p>
-                    <div class="cookies-info">
-                        <h4>What we need:</h4>
-                        <ul>
-                            <li>Access to Brave browser cookies</li>
-                            <li>YouTube authentication data</li>
-                            <li>No personal information is collected</li>
-                        </ul>
+                    <p>To download YouTube videos, we need your YouTube cookies to bypass bot detection. Please follow these steps:</p>
+                    <div class="cookies-steps">
+                        <h4>How to get cookies:</h4>
+                        <ol>
+                            <li>Go to <a href="https://youtube.com" target="_blank">YouTube.com</a> in your browser</li>
+                            <li>Make sure you're logged in</li>
+                            <li>Press F12 to open Developer Tools</li>
+                            <li>Go to Application/Storage → Cookies → youtube.com</li>
+                            <li>Copy the value of these cookies: <code>CONSENT</code>, <code>VISITOR_INFO1_LIVE</code>, <code>YSC</code></li>
+                        </ol>
                     </div>
-                    <div class="cookies-warning">
-                        <i class="fas fa-info-circle"></i>
-                        <p><strong>Note:</strong> Make sure you're logged into YouTube in your Brave browser for best results.</p>
+                    <div class="cookies-input">
+                        <label for="consentCookie">CONSENT Cookie:</label>
+                        <input type="text" id="consentCookie" placeholder="YES+cb.20241231-19-p0.en+FX+425">
+                        
+                        <label for="visitorCookie">VISITOR_INFO1_LIVE Cookie:</label>
+                        <input type="text" id="visitorCookie" placeholder="v1234567890">
+                        
+                        <label for="yscCookie">YSC Cookie:</label>
+                        <input type="text" id="yscCookie" placeholder="1234567890abcdef">
                     </div>
-                </div>
-                <div class="cookies-actions">
-                    <button id="grantCookiesBtn" class="grant-btn">
-                        <i class="fas fa-check"></i>
-                        Grant Access
-                    </button>
-                    <button id="denyCookiesBtn" class="deny-btn">
-                        <i class="fas fa-times"></i>
-                        Deny Access
-                    </button>
+                    <div class="cookies-actions">
+                        <button id="saveCookiesBtn" class="grant-btn">
+                            <i class="fas fa-save"></i>
+                            Save Cookies
+                        </button>
+                        <button id="skipCookiesBtn" class="deny-btn">
+                            <i class="fas fa-times"></i>
+                            Skip for Now
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
