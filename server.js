@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const { Readable } = require('stream');
 const ytdl = require('@distube/ytdl-core'); // Re-enabled for speed
 const YTDlpWrap = require('yt-dlp-wrap').default;
@@ -266,8 +267,25 @@ app.post('/api/download', async (req, res) => {
             res.setHeader('Content-Length', downloadStream.headers['content-length']);
         }
         
+        console.log('🔗 Starting stream pipe to response...');
+        
+        // Add response monitoring
+        res.on('finish', () => {
+            console.log('✅ Response finished successfully');
+        });
+        
+        res.on('error', (error) => {
+            console.error('❌ Response error:', error);
+        });
+        
+        res.on('close', () => {
+            console.log('🔒 Response connection closed');
+        });
+        
         // Pipe the stream directly to response
         downloadStream.pipe(res);
+        
+        console.log('🔗 Stream pipe initiated');
 
     } catch (error) {
         console.error('Download error:', error);
@@ -1476,8 +1494,10 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         
         console.log('🔧 Enhanced yt-dlp v2.0 format option:', formatOption);
         
-        // Enhanced yt-dlp options with cookie authentication
-        const downloadStream = ytdlp.execStream([
+        // Use spawn directly instead of YTDlpWrap for better control
+        console.log('🔧 Using direct spawn for yt-dlp...');
+        
+        const downloadStream = spawn(ytDlpPath, [
             url,
             '-o', '-',
             '-f', formatOption,
@@ -1485,34 +1505,61 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--no-warnings',
             '--no-progress',
             '--quiet',
-            // Enhanced anti-bot detection v2.0
+            // Simplified anti-bot detection
             '--user-agent', getRandomUserAgent(),
             '--add-header', `Cookie:${getYtDlpCookie()}`,
-            '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-            '--add-header', 'Accept-Language:en-US,en;q=0.9,ro;q=0.8',
-            '--add-header', 'Accept-Encoding:gzip, deflate, br',
-            '--add-header', 'DNT:1',
-            '--add-header', 'Connection:keep-alive',
-            '--add-header', 'Upgrade-Insecure-Requests:1',
-            '--add-header', 'Sec-Fetch-Dest:document',
-            '--add-header', 'Sec-Fetch-Mode:navigate',
-            '--add-header', 'Sec-Fetch-Site:none',
-            '--add-header', 'Sec-Fetch-User:?1',
-            '--add-header', 'Cache-Control:max-age=0',
-            '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            '--add-header', 'Sec-Ch-Ua-Mobile:?0',
-            '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
-            // Additional anti-bot options
             '--no-check-certificates',
             '--prefer-insecure',
-            '--extractor-args', 'youtube:player_client=android',
-            '--extractor-args', 'youtube:player_skip=webpage',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
         ]);
         
+        // Add process monitoring
+        downloadStream.on('error', (error) => {
+            console.error('❌ yt-dlp process error:', error);
+        });
+        
+        downloadStream.stderr.on('data', (data) => {
+            console.log('⚠️ yt-dlp stderr:', data.toString().trim());
+        });
+        
+        downloadStream.on('exit', (code, signal) => {
+            console.log(`🔚 yt-dlp process exited with code ${code}, signal ${signal}`);
+        });
+        
+        // Add comprehensive stream monitoring
         downloadStream.on('error', (error) => {
             console.error('❌ Enhanced yt-dlp v2.0 stream error:', error);
         });
+        
+        downloadStream.on('data', (chunk) => {
+            console.log(`📥 Enhanced yt-dlp v2.0 data chunk: ${chunk.length} bytes`);
+        });
+        
+        downloadStream.on('end', () => {
+            console.log('✅ Enhanced yt-dlp v2.0 stream ended successfully');
+        });
+        
+        downloadStream.on('close', () => {
+            console.log('🔒 Enhanced yt-dlp v2.0 stream closed');
+        });
+        
+        // Test if stream is readable
+        if (!downloadStream.readable) {
+            console.log('⚠️ Enhanced yt-dlp v2.0 stream is not readable');
+        } else {
+            console.log('✅ Enhanced yt-dlp v2.0 stream is readable');
+        }
+        
+        // Check if stream has any data after a short delay
+        setTimeout(() => {
+            if (downloadStream.destroyed) {
+                console.log('⚠️ Enhanced yt-dlp v2.0 stream was destroyed');
+            } else if (downloadStream.closed) {
+                console.log('⚠️ Enhanced yt-dlp v2.0 stream was closed');
+            } else {
+                console.log('✅ Enhanced yt-dlp v2.0 stream is still active');
+            }
+        }, 1000);
         
         console.log('✅ Enhanced yt-dlp v2.0 download stream created successfully');
         return downloadStream;
