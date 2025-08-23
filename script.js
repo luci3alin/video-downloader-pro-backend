@@ -20,9 +20,8 @@ class VideoDownloader {
         // Show cookies section if permission not granted OR if cookies are missing
         if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
             console.log('🔍 Cookies permission not granted or missing, will show section');
-            setTimeout(() => {
-                this.showCookiesSection();
-            }, 1000); // Show after 1 second
+            // Show immediately instead of waiting
+            this.showCookiesSection();
         } else {
             console.log('🔍 Cookies permission already granted');
         }
@@ -1427,8 +1426,17 @@ class VideoDownloader {
     // Cookies Modal Functions
     showCookiesSection() {
         const cookiesSection = document.getElementById('cookiesSection');
+        console.log('🔍 showCookiesSection called');
+        console.log('🔍 cookiesSection element:', cookiesSection);
+        
         if (cookiesSection) {
-            cookiesSection.style.display = 'block';
+            // Force display with !important
+            cookiesSection.style.setProperty('display', 'block', 'important');
+            cookiesSection.style.setProperty('visibility', 'visible', 'important');
+            cookiesSection.style.setProperty('opacity', '1', 'important');
+            
+            console.log('🔍 Cookies section display style set to:', cookiesSection.style.display);
+            console.log('🔍 Cookies section computed style:', window.getComputedStyle(cookiesSection).display);
             
             // Initialize events
             this.initializeCookiesSectionEvents();
