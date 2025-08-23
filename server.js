@@ -5,7 +5,6 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const { Readable } = require('stream');
 const ytdl = require('@distube/ytdl-core'); // Re-enabled for speed
-const YTDlpWrap = require('yt-dlp-wrap').default;
 const ytpl = require('@distube/ytpl');
 const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
@@ -29,13 +28,6 @@ const COOKIES = [
     'CONSENT=YES+cb.20240102-09-p0.en+FX+410; Domain=.youtube.com; Path=/'
 ];
 
-// yt-dlp compatible cookie format (without domain and path)
-const YTDLP_COOKIES = [
-    'CONSENT=YES+cb.20231231-07-p0.en+FX+410',
-    'CONSENT=YES+cb.20240101-08-p0.en+FX+410',
-    'CONSENT=YES+cb.20240102-09-p0.en+FX+410'
-];
-
 // Enhanced User-Agent rotation with more realistic browsers
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -57,11 +49,6 @@ function getRandomUserAgent() {
 // Function to get random cookie
 function getRandomCookie() {
     return COOKIES[Math.floor(Math.random() * COOKIES.length)];
-}
-
-// Function to get yt-dlp compatible cookie
-function getYtDlpCookie() {
-    return YTDLP_COOKIES[Math.floor(Math.random() * YTDLP_COOKIES.length)];
 }
 
 // Function to add random delay (anti-bot timing)
@@ -419,22 +406,43 @@ app.post('/api/download-playlist', async (req, res) => {
                                      throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
                                  }
                                  
-                                 const ytdlp = new YTDlpWrap(ytDlpPath);
-                                 
-                                 // Configure download options
-                                 let formatOption = requestedFormat === 'mp3' ? 'bestaudio' : 'best[ext=mp4]/best';
-                                 
-                                 // Create yt-dlp download stream
-                                 downloadStream = ytdlp.execStream([
-                                     video.url,
-                                     '-o', '-',
-                                     '-f', formatOption,
-                                     '--no-playlist',
-                                     '--no-warnings',
-                                     '--no-progress',
-                                     '--quiet',
-                                     ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
-                                 ]);
+                                                                   // Configure download options
+                                  let formatOption = requestedFormat === 'mp3' ? 'bestaudio' : 'best[ext=mp4]/best';
+                                  
+                                  // Create yt-dlp download stream using spawn
+                                  const ytDlpProcess = spawn(ytDlpPath, [
+                                      video.url,
+                                      '-o', '-',
+                                      '-f', formatOption,
+                                      '--no-playlist',
+                                      '--no-warnings',
+                                      '--no-progress',
+                                      '--quiet',
+                                      '--user-agent', getRandomUserAgent(),
+                                      '--cookies-from-browser', 'chrome',
+                                      '--no-check-certificates',
+                                      '--prefer-insecure',
+                                      ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+                                  ]);
+                                  
+                                  // Get the stdout stream from the process
+                                  downloadStream = ytDlpProcess.stdout;
+                                  
+                                  // Add error handling for the process
+                                  ytDlpProcess.on('error', (error) => {
+                                      console.error(`❌ Video ${i + 1} - yt-dlp process error:`, error);
+                                  });
+                                  
+                                  ytDlpProcess.stderr.on('data', (data) => {
+                                      const stderrData = data.toString().trim();
+                                      console.log(`⚠️ Video ${i + 1} - yt-dlp stderr:`, stderrData);
+                                  });
+                                  
+                                  ytDlpProcess.on('exit', (code, signal) => {
+                                      if (code !== 0) {
+                                          console.error(`❌ Video ${i + 1} - yt-dlp process failed with code ${code}, signal ${signal}`);
+                                      }
+                                  });
                                  
                                  downloadMethod = 'yt-dlp (fallback)';
                                  
@@ -1112,46 +1120,30 @@ async function getYouTubeInfoViaYtDlp(url) {
             throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
         }
         
-        const ytdlp = new YTDlpWrap(ytDlpPath);
-        
         console.log('🔧 yt-dlp options configured with enhanced anti-bot detection');
         
-        // Get video info using yt-dlp execStream with enhanced anti-bot detection v2.0
+        // Get video info using yt-dlp spawn with enhanced anti-bot detection v2.0
         const result = await new Promise((resolve, reject) => {
             const info = [];
-            const infoStream = ytdlp.execStream([
+            const infoProcess = spawn(ytDlpPath, [
                 url,
                 '--dump-json',
                 '--no-playlist',
                 '--quiet',
                 '--no-warnings',
                 '--user-agent', getRandomUserAgent(),
-                '--add-header', `Cookie:${getYtDlpCookie()}`,
-                '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                '--add-header', 'Accept-Language:en-US,en;q=0.9',
-                '--add-header', 'Accept-Encoding:gzip, deflate, br',
-                '--add-header', 'DNT:1',
-                '--add-header', 'Connection:keep-alive',
-                '--add-header', 'Upgrade-Insecure-Requests:1',
-                '--add-header', 'Sec-Fetch-Dest:document',
-                '--add-header', 'Sec-Fetch-Mode:navigate',
-                '--add-header', 'Sec-Fetch-Site:none',
-                '--add-header', 'Sec-Fetch-User:?1',
-                '--add-header', 'Cache-Control:max-age=0',
-                '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                '--add-header', 'Sec-Ch-Ua-Mobile:?0',
-                '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
+                '--cookies-from-browser', 'chrome',
                 '--no-check-certificates',
                 '--prefer-insecure',
                 '--extractor-args', 'youtube:player_client=android',
                 '--extractor-args', 'youtube:player_skip=webpage'
             ]);
             
-            infoStream.on('data', (chunk) => {
+            infoProcess.stdout.on('data', (chunk) => {
                 info.push(chunk);
             });
             
-            infoStream.on('end', () => {
+            infoProcess.stdout.on('end', () => {
                 try {
                     const jsonStr = Buffer.concat(info).toString();
                     const videoInfo = JSON.parse(jsonStr);
@@ -1161,8 +1153,25 @@ async function getYouTubeInfoViaYtDlp(url) {
                 }
             });
             
-            infoStream.on('error', (error) => {
+            infoProcess.stderr.on('data', (data) => {
+                const stderrData = data.toString().trim();
+                console.log('⚠️ yt-dlp info stderr:', stderrData);
+                
+                // Check for bot detection error
+                if (stderrData.includes('Sign in to confirm you\'re not a bot')) {
+                    console.error('❌ yt-dlp bot detection triggered during info retrieval');
+                }
+            });
+            
+            infoProcess.on('error', (error) => {
                 reject(error);
+            });
+            
+            infoProcess.on('exit', (code, signal) => {
+                if (code !== 0) {
+                    console.error(`❌ yt-dlp info process failed with code ${code}, signal ${signal}`);
+                    reject(new Error(`yt-dlp info process failed with code ${code}`));
+                }
             });
         });
         
@@ -1497,7 +1506,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         // Use spawn directly instead of YTDlpWrap for better control
         console.log('🔧 Using direct spawn for yt-dlp...');
         
-        const downloadStream = spawn(ytDlpPath, [
+        const ytDlpProcess = spawn(ytDlpPath, [
             url,
             '-o', '-',
             '-f', formatOption,
@@ -1505,26 +1514,40 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--no-warnings',
             '--no-progress',
             '--quiet',
-            // Simplified anti-bot detection
+            // Enhanced anti-bot detection v2.0
             '--user-agent', getRandomUserAgent(),
-            '--add-header', `Cookie:${getYtDlpCookie()}`,
+            '--cookies-from-browser', 'chrome',
             '--no-check-certificates',
             '--prefer-insecure',
+            '--extractor-args', 'youtube:player_client=android',
+            '--extractor-args', 'youtube:player_skip=webpage',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
         ]);
         
         // Add process monitoring
-        downloadStream.on('error', (error) => {
+        ytDlpProcess.on('error', (error) => {
             console.error('❌ yt-dlp process error:', error);
         });
         
-        downloadStream.stderr.on('data', (data) => {
-            console.log('⚠️ yt-dlp stderr:', data.toString().trim());
+        ytDlpProcess.stderr.on('data', (data) => {
+            const stderrData = data.toString().trim();
+            console.log('⚠️ yt-dlp stderr:', stderrData);
+            
+            // Check for bot detection error
+            if (stderrData.includes('Sign in to confirm you\'re not a bot')) {
+                console.error('❌ yt-dlp bot detection triggered');
+            }
         });
         
-        downloadStream.on('exit', (code, signal) => {
+        ytDlpProcess.on('exit', (code, signal) => {
             console.log(`🔚 yt-dlp process exited with code ${code}, signal ${signal}`);
+            if (code !== 0) {
+                console.error('❌ yt-dlp process failed with non-zero exit code');
+            }
         });
+        
+        // Create a proper stream from the process
+        const downloadStream = ytDlpProcess.stdout;
         
         // Add comprehensive stream monitoring
         downloadStream.on('error', (error) => {
