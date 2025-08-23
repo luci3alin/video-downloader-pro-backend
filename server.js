@@ -330,6 +330,16 @@ app.post('/api/download-playlist', async (req, res) => {
                                  
                                  // Use yt-dlp with dynamic path for cross-platform compatibility
                                  const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
+                                 console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
+                                 console.log(`🔧 Platform: ${process.platform}`);
+                                 console.log(`🔧 YT_DLP_PATH env: ${process.env.YT_DLP_PATH}`);
+                                 
+                                 // Check if yt-dlp exists
+                                 if (!fs.existsSync(ytDlpPath)) {
+                                     console.error(`❌ yt-dlp not found at path: ${ytDlpPath}`);
+                                     throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
+                                 }
+                                 
                                  const ytdlp = new YTDlpWrap(ytDlpPath);
                                  
                                  // Configure download options
@@ -1011,6 +1021,16 @@ async function getYouTubeInfoViaYtDlp(url) {
     try {
         // Use yt-dlp with dynamic path for cross-platform compatibility
         const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
+        console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
+        console.log(`🔧 Platform: ${process.platform}`);
+        console.log(`🔧 YT_DLP_PATH env: ${process.env.YT_DLP_PATH}`);
+        
+        // Check if yt-dlp exists
+        if (!fs.existsSync(ytDlpPath)) {
+            console.error(`❌ yt-dlp not found at path: ${ytDlpPath}`);
+            throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
+        }
+        
         const ytdlp = new YTDlpWrap(ytDlpPath);
         
         // Get video info using yt-dlp
@@ -1348,6 +1368,16 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
     try {
         // Use yt-dlp with dynamic path for cross-platform compatibility
         const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
+        console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
+        console.log(`🔧 Platform: ${process.platform}`);
+        console.log(`🔧 YT_DLP_PATH env: ${process.env.YT_DLP_PATH}`);
+        
+        // Check if yt-dlp exists
+        if (!fs.existsSync(ytDlpPath)) {
+            console.error(`❌ yt-dlp not found at path: ${ytDlpPath}`);
+            throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
+        }
+        
         const ytdlp = new YTDlpWrap(ytDlpPath);
          
          // Ultra-fast download options - prioritize speed over quality

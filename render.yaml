@@ -5,10 +5,15 @@ services:
     plan: starter
     buildCommand: |
       npm install
+      echo "Downloading yt-dlp for Linux..."
       curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
+      echo "Making yt-dlp executable..."
       chmod +x yt-dlp
+      echo "Verifying yt-dlp installation..."
       ls -la yt-dlp
-      echo "yt-dlp downloaded and made executable"
+      echo "Testing yt-dlp execution..."
+      ./yt-dlp --version
+      echo "yt-dlp downloaded and made executable successfully"
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
