@@ -205,6 +205,11 @@ app.post('/api/download', async (req, res) => {
         res.setHeader('X-Download-Quality', downloadStream.downloadQuality || quality);
         res.setHeader('X-Download-Format', downloadStream.downloadFormat || format);
         
+        // Set Content-Length if available for progress tracking
+        if (downloadStream.headers && downloadStream.headers['content-length']) {
+            res.setHeader('Content-Length', downloadStream.headers['content-length']);
+        }
+        
         // Pipe the stream directly to response
         downloadStream.pipe(res);
 
@@ -1019,6 +1024,8 @@ async function getYouTubeInfoViaYtdlCore(url) {
 // Function using yt-dlp for analysis (final fallback)
 async function getYouTubeInfoViaYtDlp(url) {
     try {
+        console.log('🔍 Attempting to get YouTube video info via yt-dlp...');
+        
         // Use yt-dlp with dynamic path for cross-platform compatibility
         const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
         console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
@@ -1033,14 +1040,31 @@ async function getYouTubeInfoViaYtDlp(url) {
         
         const ytdlp = new YTDlpWrap(ytDlpPath);
         
-        // Get video info using yt-dlp
+        console.log('🔧 yt-dlp options configured with enhanced anti-bot detection');
+        
+        // Get video info using yt-dlp execStream with dump-json
         const result = await new Promise((resolve, reject) => {
             const info = [];
             const infoStream = ytdlp.execStream([
                 url,
                 '--dump-json',
                 '--no-playlist',
-                '--quiet'
+                '--quiet',
+                '--no-warnings',
+                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                '--add-header', 'Accept-Language:en-US,en;q=0.9',
+                '--add-header', 'Accept-Encoding:gzip, deflate, br',
+                '--add-header', 'DNT:1',
+                '--add-header', 'Connection:keep-alive',
+                '--add-header', 'Upgrade-Insecure-Requests:1',
+                '--add-header', 'Sec-Fetch-Dest:document',
+                '--add-header', 'Sec-Fetch-Mode:navigate',
+                '--add-header', 'Sec-Fetch-Site:none',
+                '--add-header', 'Sec-Fetch-User:?1',
+                '--add-header', 'Cache-Control:max-age=0',
+                '--no-check-certificates',
+                '--prefer-insecure'
             ]);
             
             infoStream.on('data', (chunk) => {
@@ -1062,75 +1086,53 @@ async function getYouTubeInfoViaYtDlp(url) {
             });
         });
         
-        // Extract qualities from formats
-        const formats = result.formats || [];
+        const videoInfo = result;
+        console.log('✅ yt-dlp successfully retrieved video info');
+        
+        if (!videoInfo || !videoInfo.formats) {
+            throw new Error('No video formats found via yt-dlp');
+        }
+        
+        // Extract available qualities and formats
+        const availableFormats = videoInfo.formats || [];
         const qualities = [];
         const qualitySizes = {};
         
-        // Get unique qualities
-        const qualitySet = new Set();
-        formats.forEach(format => {
-            if (format.height && format.height > 0) {
+        // Process formats to get quality information
+        availableFormats.forEach(format => {
+            if (format.height && format.ext) {
                 const quality = `${format.height}p`;
-                qualitySet.add(quality);
-            }
-        });
-        
-        // Map to our quality format and sort
-        const qualityMap = {
-            '2160p': '4K',
-            '1440p': '2K', 
-            '1080p': '1080p',
-            '720p': '720p',
-            '480p': '480p',
-            '360p': '360p',
-            '240p': '240p'
-        };
-        
-        Array.from(qualitySet).sort((a, b) => parseInt(b) - parseInt(a)).forEach(quality => {
-            const mappedQuality = qualityMap[quality] || quality;
-            if (!qualities.includes(mappedQuality)) {
-                qualities.push(mappedQuality);
-                // Estimate size
-                const duration = result.duration || 0;
-                let sizeMB = 0;
-                switch (mappedQuality) {
-                    case '4K': sizeMB = (duration * 25) / 60; break;
-                    case '2K': sizeMB = (duration * 15) / 60; break;
-                    case '1080p': sizeMB = (duration * 8) / 60; break;
-                    case '720p': sizeMB = (duration * 5) / 60; break;
-                    case '480p': sizeMB = (duration * 2.5) / 60; break;
-                    case '360p': sizeMB = (duration * 1.5) / 60; break;
-                    case '240p': sizeMB = (duration * 1) / 60; break;
-                    default: sizeMB = (duration * 3) / 60;
+                if (!qualities.includes(quality)) {
+                    qualities.push(quality);
                 }
-                qualitySizes[mappedQuality] = sizeMB > 1024 ? 
-                    `${(sizeMB / 1024).toFixed(1)}GB` : 
-                    `${sizeMB.toFixed(1)}MB`;
+                if (format.filesize) {
+                    qualitySizes[quality] = format.filesize;
+                }
             }
         });
         
-        const videoInfo = {
-            title: result.title || 'Unknown Title',
-            duration: parseInt(result.duration) || 0,
-            thumbnail: result.thumbnail || '',
+        // Sort qualities from highest to lowest
+        qualities.sort((a, b) => parseInt(b) - parseInt(a));
+        
+        // Add 2K and 4K if available
+        if (qualities.includes('1440p')) qualities.unshift('2K');
+        if (qualities.includes('2160p')) qualities.unshift('4K');
+        
+        return {
+            title: videoInfo.title || 'YouTube Video',
+            duration: videoInfo.duration || 'Unknown',
+            thumbnail: videoInfo.thumbnail || '',
             qualities: qualities,
-            formats: ['mp4', 'mp3'],
+            formats: ['mp4', 'mp3', 'webm'],
             qualitySizes: qualitySizes,
-            note: 'Retrieved via yt-dlp (final fallback)',
-            debugInfo: {
-                method: 'yt-dlp',
-                isStatic: false,
-                realQualities: Array.from(qualitySet),
-                totalFormats: formats.length,
-                message: `Found ${qualities.length} available qualities: ${qualities.join(', ')}`
-            }
+            note: 'YouTube video detected via yt-dlp. Download functionality available.',
+            videoId: videoInfo.id || '',
+            videoData: videoInfo,
+            downloadMethod: 'yt-dlp'
         };
-        
-        return videoInfo;
-        
     } catch (error) {
-        throw new Error(`yt-dlp analysis failed: ${error.message}`);
+        console.error('❌ yt-dlp failed:', error.message);
+        throw error;
     }
 }
 
@@ -1225,21 +1227,57 @@ function parseDuration(duration) {
     return hours * 3600 + minutes * 60 + seconds;
 }
 
-// Fast download function using ytdl-core
+// Fast download function using ytdl-core with enhanced anti-bot detection
 async function downloadYouTubeViaYtdlCore(url, quality, format) {
     try {
-        // Get video info first
-        const info = await ytdl.getInfo(url);
+        console.log('🔍 Attempting to get YouTube video info via ytdl-core...');
+        
+        // Get video info first with enhanced options
+        const info = await ytdl.getInfo(url, {
+            requestOptions: {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                    'Cache-Control': 'max-age=0'
+                }
+            }
+        });
+        
+        console.log('✅ ytdl-core successfully retrieved video info');
         
         // Configure download options based on quality and format
-        let downloadOptions = {};
+        let downloadOptions = {
+            requestOptions: {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                    'Cache-Control': 'max-age=0'
+                }
+            }
+        };
         
         if (format === 'mp3') {
             // For audio, get highest quality audio
-            downloadOptions = {
-                quality: 'highestaudio',
-                filter: 'audioonly'
-            };
+            downloadOptions.quality = 'highestaudio';
+            downloadOptions.filter = 'audioonly';
         } else {
             // For video, select specific quality format
             const formats = info.formats;
@@ -1292,10 +1330,10 @@ async function downloadYouTubeViaYtdlCore(url, quality, format) {
             
             console.log(`🎯 Selected format: ${selectedFormat.height}p, size: ${selectedFormat.contentLength || 'unknown'}`);
             
-            downloadOptions = {
-                format: selectedFormat
-            };
+            downloadOptions.format = selectedFormat;
         }
+        
+        console.log('🔧 ytdl-core download options configured with enhanced anti-bot detection');
         
         // Create download stream
         const downloadStream = ytdl(url, downloadOptions);
@@ -1305,6 +1343,7 @@ async function downloadYouTubeViaYtdlCore(url, quality, format) {
             console.error('❌ ytdl-core stream error:', error);
         });
         
+        console.log('✅ ytdl-core download stream created successfully');
         console.log('🔍 ytdl-core DOWNLOAD DEBUG: Stream created successfully');
         console.log('🔍 ytdl-core DOWNLOAD DEBUG: Options used:', JSON.stringify(downloadOptions));
         console.log('🔍 ytdl-core DOWNLOAD DEBUG: Stream type:', downloadStream.constructor.name);
@@ -1312,6 +1351,7 @@ async function downloadYouTubeViaYtdlCore(url, quality, format) {
         return downloadStream;
         
     } catch (error) {
+        console.error('❌ ytdl-core failed:', error.message);
         throw new Error(`ytdl-core download failed: ${error.message}`);
     }
 }
@@ -1363,9 +1403,11 @@ async function downloadYouTube(url, quality, format) {
     }
 }
 
-// Fallback download function using yt-dlp
+// Fallback download function using yt-dlp with enhanced anti-bot detection
 async function downloadYouTubeViaYtDlp(url, quality, format) {
     try {
+        console.log('🔍 Attempting to download YouTube video via yt-dlp fallback...');
+        
         // Use yt-dlp with dynamic path for cross-platform compatibility
         const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
         console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
@@ -1380,41 +1422,58 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         
         const ytdlp = new YTDlpWrap(ytDlpPath);
          
-         // Ultra-fast download options - prioritize speed over quality
-         let formatOption;
-         
-         if (format === 'mp3') {
-             // For audio, use best quality
-             formatOption = 'bestaudio';
-         } else {
-             // For video, use best available quality for the requested resolution
-             switch (quality) {
-                 case '4K': formatOption = 'best[height<=2160][ext=mp4]/best[height<=2160]'; break;
-                 case '2K': formatOption = 'best[height<=1440][ext=mp4]/best[height<=1440]'; break;
-                 case '1080p': formatOption = 'best[height<=1080][ext=mp4]/best[height<=1080]'; break;
-                 case '720p': formatOption = 'best[height<=720][ext=mp4]/best[height<=720]'; break;
-                 case '480p': formatOption = 'best[height<=480][ext=mp4]/best[height<=480]'; break;
-                 case '360p': formatOption = 'best[height<=360][ext=mp4]/best[height<=360]'; break;
-                 case '240p': formatOption = 'best[height<=240][ext=mp4]/best[height<=240]'; break;
-                 default: formatOption = 'best[ext=mp4]/best';
-             }
-         }
-         
-         console.log('🔧 yt-dlp format option (optimized for speed):', formatOption);
-         
-         // Start download with yt-dlp - ultra-optimized for speed
-         const downloadStream = ytdlp.execStream([
-             url,
-             '-o', '-', // Output to stdout
-             '-f', formatOption,
-             '--no-playlist', // Ensure single video
-             '--no-warnings', // Reduce output
-             '--no-progress', // Disable progress bar
-             '--quiet', // Minimal output
-             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
-         ]);
-         
-                 // Add error handling to prevent server crashes
+        // Enhanced download options with anti-bot detection
+        let formatOption;
+        
+        if (format === 'mp3') {
+            // For audio, use best quality
+            formatOption = 'bestaudio';
+        } else {
+            // For video, use best available quality for the requested resolution
+            switch (quality) {
+                case '4K': formatOption = 'best[height<=2160][ext=mp4]/best[height<=2160]'; break;
+                case '2K': formatOption = 'best[height<=1440][ext=mp4]/best[height<=1440]'; break;
+                case '1080p': formatOption = 'best[height<=1080][ext=mp4]/best[height<=1080]'; break;
+                case '720p': formatOption = 'best[height<=720][ext=mp4]/best[height<=720]'; break;
+                case '480p': formatOption = 'best[height<=480][ext=mp4]/best[height<=480]'; break;
+                case '360p': formatOption = 'best[height<=360][ext=mp4]/best[height<=360]'; break;
+                case '240p': formatOption = 'best[height<=240][ext=mp4]/best[height<=240]'; break;
+                default: formatOption = 'best[ext=mp4]/best';
+            }
+        }
+        
+        console.log('🔧 yt-dlp format option (optimized for speed):', formatOption);
+        console.log('🔧 yt-dlp options configured with enhanced anti-bot detection');
+        
+        // Start download with yt-dlp - enhanced with anti-bot detection
+        const downloadStream = ytdlp.execStream([
+            url,
+            '-o', '-', // Output to stdout
+            '-f', formatOption,
+            '--no-playlist', // Ensure single video
+            '--no-warnings', // Reduce output
+            '--no-progress', // Disable progress bar
+            '--quiet', // Minimal output
+            // Enhanced anti-bot detection options
+            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            '--add-header', 'Accept-Language:en-US,en;q=0.9',
+            '--add-header', 'Accept-Encoding:gzip, deflate, br',
+            '--add-header', 'DNT:1',
+            '--add-header', 'Connection:keep-alive',
+            '--add-header', 'Upgrade-Insecure-Requests:1',
+            '--add-header', 'Sec-Fetch-Dest:document',
+            '--add-header', 'Sec-Fetch-Mode:navigate',
+            '--add-header', 'Sec-Fetch-Site:none',
+            '--add-header', 'Sec-Fetch-User:?1',
+            '--add-header', 'Cache-Control:max-age=0',
+            // Additional anti-bot options
+            '--no-check-certificates',
+            '--prefer-insecure',
+            ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+        ]);
+        
+        // Add error handling to prevent server crashes
         downloadStream.on('error', (error) => {
             console.error('❌ Download stream error:', error);
         });

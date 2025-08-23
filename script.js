@@ -857,8 +857,46 @@ class VideoDownloader {
             console.log('🎯 Quality downloaded:', downloadQuality);
             console.log('📁 Format downloaded:', downloadFormat);
             
-            // Create download link
-            const blob = await response.blob();
+            // Show download method info to user
+            if (downloadLibrary !== 'unknown') {
+                console.log(`🎯 Download completed using: ${downloadLibrary}`);
+                console.log(`🎯 Quality: ${downloadQuality}, Format: ${downloadFormat}`);
+                
+                // Update progress message to show which method was used
+                this.updateDownloadProgress(50, `Downloading via ${downloadLibrary}...`);
+            }
+            
+            // Create download link with real-time progress tracking
+            console.log('💾 Starting blob creation with progress tracking...');
+            
+            // Track download progress in real-time
+            const reader = response.body.getReader();
+            const contentLength = response.headers.get('content-length');
+            const totalSize = contentLength ? parseInt(contentLength) : 0;
+            let downloadedSize = 0;
+            const chunks = [];
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) break;
+                
+                chunks.push(value);
+                downloadedSize += value.length;
+                
+                // Calculate progress percentage
+                if (totalSize > 0) {
+                    const progress = Math.min(95, Math.round((downloadedSize / totalSize) * 100));
+                    this.updateDownloadProgress(progress, `Downloading... ${(downloadedSize / (1024 * 1024)).toFixed(2)} MB`);
+                } else {
+                    // If we don't know total size, estimate progress based on downloaded data
+                    const estimatedProgress = Math.min(95, Math.round((downloadedSize / (1024 * 1024)) * 10)); // Rough estimate
+                    this.updateDownloadProgress(estimatedProgress, `Downloading... ${(downloadedSize / (1024 * 1024)).toFixed(2)} MB`);
+                }
+            }
+            
+            // Create blob from chunks
+            const blob = new Blob(chunks);
             console.log('💾 Blob size:', (blob.size / (1024 * 1024)).toFixed(2) + ' MB');
             console.log('💾 Blob type:', blob.type);
             
