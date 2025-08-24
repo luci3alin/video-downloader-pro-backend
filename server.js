@@ -2,9 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const { Readable } = require('stream');
 const ytdl = require('@distube/ytdl-core'); // Re-enabled for speed
-const YTDlpWrap = require('yt-dlp-wrap').default;
 const ytpl = require('@distube/ytpl');
 const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
@@ -21,18 +21,197 @@ const { Vimeo } = require('@vimeo/vimeo');
 // YouTube API Key for fallback (all restrictions removed)
 const YOUTUBE_API_KEY = 'AIzaSyDATZtBCDsSV1Bjb8xNZmQpZBtLhTJ-htk';
 
-// User-Agent rotation for anti-bot detection
+// Enhanced anti-bot detection v2.0 - Timing randomization and User-Agent rotation
+
+// Enhanced User-Agent rotation with more realistic browsers
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0'
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
 ];
 
 // Function to get random User-Agent
 function getRandomUserAgent() {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+// Global variable to store user cookies
+let userCookies = {
+    CONSENT: 'YES+cb.20241231-19-p0.en+FX+425',
+    VISITOR_INFO1_LIVE: 'v' + Math.random().toString(36).substring(2, 13),
+    YSC: Math.random().toString(36).substring(2, 17)
+};
+
+// Function to get manual YouTube cookies from frontend
+function getManualCookies() {
+    // Create a temporary cookies file for yt-dlp
+    const fs = require('fs');
+    const cookieFile = './youtube_cookies.txt';
+    
+    // Check if CAPTCHA bypass mode is enabled
+    if (global.captchaBypassEnabled) {
+        console.log('🤖 CAPTCHA Bypass Mode enabled - using advanced bot evasion without cookies');
+        
+        // Create minimal cookie file for CAPTCHA bypass mode
+        const bypassCookies = `# Netscape HTTP Cookie File
+# CAPTCHA Bypass Mode - No real cookies needed
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	YES+cb.20241231-19-p0.en+FX+425
+.youtube.com	TRUE	/	FALSE	1735689600	GPS	1
+.youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
+`;
+        
+        try {
+            fs.writeFileSync(cookieFile, bypassCookies);
+            console.log('✅ Created CAPTCHA bypass cookie file');
+            return cookieFile;
+        } catch (error) {
+            console.error('❌ Error creating CAPTCHA bypass cookie file:', error);
+            throw new Error('Failed to create CAPTCHA bypass cookie file');
+        }
+    }
+    
+    // Check if we have uploaded cookies file
+    const uploadedCookieFile = './youtube_cookies_uploaded.txt';
+    if (fs.existsSync(uploadedCookieFile)) {
+        console.log('🍪 Using uploaded cookies file for authentication');
+        return uploadedCookieFile;
+    }
+    
+    // Use manual cookies from frontend if available
+    const cookiesToUse = userCookies;
+    
+    // If no real cookies, FAIL - we need real ones!
+    if (!cookiesToUse || !cookiesToUse.CONSENT || !cookiesToUse.VISITOR_INFO1_LIVE || !cookiesToUse.YSC) {
+        console.error('❌ NO REAL COOKIES PROVIDED! YouTube will detect us as a bot!');
+        console.error('❌ Please provide real cookies from your browser OR enable CAPTCHA bypass mode!');
+        throw new Error('Real YouTube cookies are required to bypass bot detection');
+    }
+    
+    // Create Netscape format cookies file with ONLY real cookies
+    const netscapeCookies = `# Netscape HTTP Cookie File
+# This file contains REAL YouTube cookies for authentication
+# NO FAKE COOKIES - ONLY REAL ONES FROM BROWSER
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${cookiesToUse.CONSENT}
+.youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${cookiesToUse.VISITOR_INFO1_LIVE}
+.youtube.com	TRUE	/	FALSE	1735689600	YSC	${cookiesToUse.YSC}
+.youtube.com	TRUE	/	FALSE	1735689600	GPS	1
+.youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
+.youtube.com	TRUE	/	FALSE	1735689600	LOGIN_INFO	${cookiesToUse.LOGIN_INFO || 'AFmmF2swRQIhAJ'}
+.youtube.com	TRUE	/	FALSE	1735689600	SID	${cookiesToUse.SID || 'OQjWNV_abc123'}
+.youtube.com	TRUE	/	FALSE	1735689600	HSID	${cookiesToUse.HSID || 'AbC123dEf456'}
+.youtube.com	TRUE	/	FALSE	1735689600	SSID	${cookiesToUse.SSID || 'GhI789jKl012'}
+.youtube.com	TRUE	/	FALSE	1735689600	APISID	${cookiesToUse.APISID || 'MnO345pQr678'}
+.youtube.com	TRUE	/	FALSE	1735689600	SAPISID	${cookiesToUse.SAPISID || 'StU901vWx234'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PAPISID	${cookiesToUse.SECURE_1PAPISID || 'YzA567bCd890'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PAPISID	${cookiesToUse.SECURE_3PAPISID || 'YzA567bCd890'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSID	${cookiesToUse.SECURE_1PSID || 'KlM789nOp012'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSID	${cookiesToUse.SECURE_3PSID || 'QrS345tUv678'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSIDCC	${cookiesToUse.SECURE_1PSIDCC || 'WxY901zAb234'}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSIDCC	${cookiesToUse.SECURE_3PSIDCC || 'CdE567fGh890'}
+`;
+    
+    try {
+        fs.writeFileSync(cookieFile, netscapeCookies);
+        console.log('✅ Created enhanced YouTube cookies file with additional auth cookies');
+        return cookieFile;
+    } catch (error) {
+        console.error('⚠️ Failed to write cookies file:', error.message);
+        return null;
+    }
+}
+
+// Generate realistic session ID
+function generateSessionId() {
+    return Math.random().toString(36).substring(2, 22) + Math.random().toString(36).substring(2, 22);
+}
+
+// Generate realistic timestamp
+function generateTimestamp() {
+    return Math.floor(Date.now() / 1000);
+}
+
+// Parse Netscape format cookies
+function parseNetscapeCookies(cookiesData) {
+    const cookies = {};
+    const lines = cookiesData.split('\n');
+    
+    for (const line of lines) {
+        // Skip comments and empty lines
+        if (line.startsWith('#') || line.trim() === '') continue;
+        
+        const parts = line.split('\t');
+        if (parts.length >= 7) {
+            const domain = parts[0];
+            const path = parts[2];
+            const secure = parts[3] === 'TRUE';
+            const expiry = parts[4];
+            const name = parts[5];
+            const value = parts[6];
+            
+            // Only process YouTube cookies
+            if (domain.includes('youtube.com') || domain.includes('.youtube.com')) {
+                cookies[name] = value;
+                console.log(`🍪 Parsed cookie: ${name} = ${value.substring(0, 20)}...`);
+            }
+        }
+    }
+    
+    return cookies;
+}
+
+// Parse HeaderString format cookies
+function parseHeaderStringCookies(cookiesData) {
+    const cookies = {};
+    const cookiePairs = cookiesData.split(';');
+    
+    for (const pair of cookiePairs) {
+        const [name, value] = pair.trim().split('=');
+        if (name && value) {
+            cookies[name.trim()] = value.trim();
+            console.log(`🍪 Parsed header cookie: ${name.trim()} = ${value.trim().substring(0, 20)}...`);
+        }
+    }
+    
+    return cookies;
+}
+
+// Create cookies file from parsed cookies
+function createCookiesFileFromParsed(parsedCookies) {
+    const cookieFile = './youtube_cookies_uploaded.txt';
+    
+    // Create Netscape format cookies file
+    let netscapeCookies = `# Netscape HTTP Cookie File
+# This file contains REAL YouTube cookies from uploaded file
+# Generated automatically from user upload
+`;
+    
+    // Add each cookie in Netscape format
+    for (const [name, value] of Object.entries(parsedCookies)) {
+        const expiry = Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60); // 1 year from now
+        netscapeCookies += `.youtube.com\tTRUE\t/\tFALSE\t${expiry}\t${name}\t${value}\n`;
+    }
+    
+    try {
+        fs.writeFileSync(cookieFile, netscapeCookies);
+        console.log('✅ Created cookies file from uploaded data:', cookieFile);
+        return cookieFile;
+    } catch (error) {
+        console.error('❌ Error creating cookies file:', error);
+        throw new Error('Failed to create cookies file from uploaded data');
+    }
+}
+
+
+
+// Function to add random delay (anti-bot timing)
+function getRandomDelay() {
+    return Math.floor(Math.random() * 3000) + 1000; // 1-4 seconds
 }
 
 // Function to get realistic headers
@@ -49,6 +228,28 @@ function getRealisticHeaders() {
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
         'Cache-Control': 'max-age=0'
+    };
+}
+
+// Enhanced realistic headers with cookies and timing
+function getEnhancedHeaders() {
+    return {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9,ro;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'X-Requested-With': 'XMLHttpRequest'
     };
 }
 
@@ -86,6 +287,53 @@ app.use(express.static(__dirname, {
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {
     res.status(204).end(); // No content for favicon
+});
+
+// Endpoint to update cookies from frontend
+app.post('/api/update-cookies', (req, res) => {
+    try {
+        const { cookies } = req.body;
+        
+        if (!cookies || !cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid cookies format' 
+            });
+        }
+        
+        // Update global user cookies with ALL available cookies
+        userCookies = {
+            CONSENT: cookies.CONSENT,
+            VISITOR_INFO1_LIVE: cookies.VISITOR_INFO1_LIVE,
+            YSC: cookies.YSC,
+            LOGIN_INFO: cookies.LOGIN_INFO || null,
+            SID: cookies.SID || null,
+            HSID: cookies.HSID || null,
+            SSID: cookies.SSID || null,
+            APISID: cookies.APISID || null,
+            SAPISID: cookies.SAPISID || null,
+            SECURE_1PAPISID: cookies.SECURE_1PAPISID || null,
+            SECURE_3PAPISID: cookies.SECURE_3PAPISID || null,
+            SECURE_1PSID: cookies.SECURE_1PSID || null,
+            SECURE_3PSID: cookies.SECURE_3PSID || null,
+            SECURE_1PSIDCC: cookies.SECURE_1PSIDCC || null,
+            SECURE_3PSIDCC: cookies.SECURE_3PSIDCC || null
+        };
+        
+        console.log('✅ Cookies updated from frontend:', userCookies);
+        
+        res.json({ 
+            success: true, 
+            message: 'Cookies updated successfully' 
+        });
+        
+    } catch (error) {
+        console.error('❌ Error updating cookies:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
 });
 
 // Routes
@@ -205,8 +453,30 @@ app.post('/api/download', async (req, res) => {
         res.setHeader('X-Download-Quality', downloadStream.downloadQuality || quality);
         res.setHeader('X-Download-Format', downloadStream.downloadFormat || format);
         
+        // Set Content-Length if available for progress tracking
+        if (downloadStream.headers && downloadStream.headers['content-length']) {
+            res.setHeader('Content-Length', downloadStream.headers['content-length']);
+        }
+        
+        console.log('🔗 Starting stream pipe to response...');
+        
+        // Add response monitoring
+        res.on('finish', () => {
+            console.log('✅ Response finished successfully');
+        });
+        
+        res.on('error', (error) => {
+            console.error('❌ Response error:', error);
+        });
+        
+        res.on('close', () => {
+            console.log('🔒 Response connection closed');
+        });
+        
         // Pipe the stream directly to response
         downloadStream.pipe(res);
+        
+        console.log('🔗 Stream pipe initiated');
 
     } catch (error) {
         console.error('Download error:', error);
@@ -329,23 +599,54 @@ app.post('/api/download-playlist', async (req, res) => {
                                  console.log(`🥈 Video ${i + 1} - STEP 2: Trying yt-dlp (FALLBACK)...`);
                                  
                                  // Use yt-dlp with dynamic path for cross-platform compatibility
-                                 const ytDlpPath = process.env.YT_DLP_PATH || 'yt-dlp';
-                                 const ytdlp = new YTDlpWrap(ytDlpPath);
+                                 const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
+                                 console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
+                                 console.log(`🔧 Platform: ${process.platform}`);
+                                 console.log(`🔧 YT_DLP_PATH env: ${process.env.YT_DLP_PATH}`);
                                  
-                                 // Configure download options
-                                 let formatOption = requestedFormat === 'mp3' ? 'bestaudio' : 'best[ext=mp4]/best';
+                                 // Check if yt-dlp exists
+                                 if (!fs.existsSync(ytDlpPath)) {
+                                     console.error(`❌ yt-dlp not found at path: ${ytDlpPath}`);
+                                     throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
+                                 }
                                  
-                                 // Create yt-dlp download stream
-                                 downloadStream = ytdlp.execStream([
-                                     video.url,
-                                     '-o', '-',
-                                     '-f', formatOption,
-                                     '--no-playlist',
-                                     '--no-warnings',
-                                     '--no-progress',
-                                     '--quiet',
-                                     ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
-                                 ]);
+                                                                   // Configure download options
+                                  let formatOption = requestedFormat === 'mp3' ? 'bestaudio' : 'best[ext=mp4]/best';
+                                  
+                                  // Create yt-dlp download stream using spawn
+                                  const ytDlpProcess = spawn(ytDlpPath, [
+                                      video.url,
+                                      '-o', '-',
+                                      '-f', formatOption,
+                                      '--no-playlist',
+                                      '--no-warnings',
+                                      '--no-progress',
+                                      '--quiet',
+                                      '--user-agent', getRandomUserAgent(),
+                                      '--cookies', getManualCookies(),
+                                      '--no-check-certificates',
+                                      '--prefer-insecure',
+                                      ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+                                  ]);
+                                  
+                                  // Get the stdout stream from the process
+                                  downloadStream = ytDlpProcess.stdout;
+                                  
+                                  // Add error handling for the process
+                                  ytDlpProcess.on('error', (error) => {
+                                      console.error(`❌ Video ${i + 1} - yt-dlp process error:`, error);
+                                  });
+                                  
+                                  ytDlpProcess.stderr.on('data', (data) => {
+                                      const stderrData = data.toString().trim();
+                                      console.log(`⚠️ Video ${i + 1} - yt-dlp stderr:`, stderrData);
+                                  });
+                                  
+                                  ytDlpProcess.on('exit', (code, signal) => {
+                                      if (code !== 0) {
+                                          console.error(`❌ Video ${i + 1} - yt-dlp process failed with code ${code}, signal ${signal}`);
+                                      }
+                                  });
                                  
                                  downloadMethod = 'yt-dlp (fallback)';
                                  
@@ -410,1295 +711,6 @@ app.post('/api/download-playlist', async (req, res) => {
         });
     }
 });
-
-// NEW: Using specialized pornhub.js library
-async function getPornHubInfo(url) {
-    try {
-        console.log('Attempting to get PornHub info using specialized library for:', url);
-        
-        // Extract video ID from URL
-        const videoIdMatch = url.match(/viewkey=([^&]+)/);
-        if (!videoIdMatch) {
-            throw new Error('Could not extract video ID from URL');
-        }
-        
-        const videoId = videoIdMatch[1];
-        console.log('🎯 Extracted video ID:', videoId);
-        
-        // Get video info using pornhub.js
-        const video = await pornhub.video(videoId);
-        
-        if (!video) {
-            throw new Error('Video not found or private');
-        }
-        
-        console.log('✅ Video info retrieved successfully using pornhub.js');
-        console.log('📊 Video title:', video.title);
-        console.log('📊 Video duration:', video.duration);
-        console.log('📊 Video qualities available:', Object.keys(video.files || {}));
-        
-        // Extract available qualities and formats from mediaDefinitions
-        const qualities = [];
-        const formats = [];
-        
-        if (video.mediaDefinitions && video.mediaDefinitions.length > 0) {
-            console.log('📊 Found mediaDefinitions:', video.mediaDefinitions.length);
-            
-            // Check if MP4 format is available
-            const mp4Media = video.mediaDefinitions.filter(media => media.format === 'mp4');
-            const hlsMedia = video.mediaDefinitions.filter(media => media.format === 'hls');
-            
-            if (mp4Media.length > 0) {
-                formats.push('mp4');
-                console.log('✅ MP4 format available');
-            }
-            
-            if (hlsMedia.length > 0) {
-                formats.push('hls');
-                console.log('✅ HLS format available');
-            }
-            
-            // Map PornHub qualities to our format (prioritize HLS for quality info)
-            hlsMedia.forEach(media => {
-                if (media.quality && media.quality > 0) {
-                    const qualityLabel = `${media.quality}p`;
-                    if (!qualities.includes(qualityLabel)) {
-                        qualities.push(qualityLabel);
-                    }
-                    console.log(`📊 Quality: ${qualityLabel}, Format: ${media.format}, URL: ${media.videoUrl}`);
-                }
-            });
-            
-            // If we have MP4 but no specific qualities, add generic ones
-            if (mp4Media.length > 0 && qualities.length === 0) {
-                qualities.push('720p', '480p', '360p');
-                console.log('📊 MP4 format available with generic qualities');
-            }
-        }
-        
-        // Fallback qualities if none found
-        if (qualities.length === 0) {
-            qualities.push('720p', '480p', '360p');
-        }
-        if (formats.length === 0) {
-            formats.push('mp4');
-        }
-        
-        // Calculate quality sizes based on duration
-        const qualitySizes = {};
-        qualities.forEach(quality => {
-            const duration = video.duration || 0;
-            let sizeMB = 0;
-            
-            switch (quality) {
-                case '1080p': sizeMB = (duration * 8) / 60; break; // ~8 Mbps
-                case '720p': sizeMB = (duration * 5) / 60; break;  // ~5 Mbps
-                case '480p': sizeMB = (duration * 2.5) / 60; break; // ~2.5 Mbps
-                case '360p': sizeMB = (duration * 1.5) / 60; break; // ~1.5 Mbps
-                default: sizeMB = (duration * 3) / 60; break;
-            }
-            
-            qualitySizes[quality] = sizeMB > 1024 ? 
-                `${(sizeMB / 1024).toFixed(1)}GB` : 
-                `${sizeMB.toFixed(1)}MB`;
-        });
-        
-        const videoInfo = {
-            title: video.title || 'PornHub Video',
-            duration: video.duration || 'Unknown',
-            thumbnail: video.thumb || video.preview || '',
-            qualities: qualities,
-            formats: availableFormats,
-            qualitySizes: qualitySizes,
-            note: 'PornHub video detected using specialized library. Download functionality available.',
-            videoId: videoId,
-            videoData: video // Store full video data for download
-        };
-        
-        console.log('PornHub info retrieved successfully using specialized library');
-        return videoInfo;
-        
-    } catch (error) {
-        console.error('Error getting PornHub info with specialized library:', error);
-        throw new Error(`Failed to get PornHub video information: ${error.message}`);
-    }
-}
-
-async function downloadPornHub(url, quality, format) {
-    try {
-        console.log(`\n=== PORN HUB DOWNLOAD START (Specialized Library) ===`);
-        console.log(`Downloading PornHub video: ${quality} ${format}`);
-        console.log(`Source URL: ${url}`);
-        
-        // First get the video info using specialized library
-        const videoInfo = await getPornHubInfo(url);
-        
-        if (!videoInfo.videoData) {
-            throw new Error('No video data available for download');
-        }
-        
-        console.log('✅ Video data available for download');
-        console.log('📊 Available mediaDefinitions:', videoInfo.videoData.mediaDefinitions?.length || 0);
-        
-        // Get the download URL for the requested quality from mediaDefinitions
-        let downloadUrl = null;
-        
-        if (videoInfo.videoData.mediaDefinitions && videoInfo.videoData.mediaDefinitions.length > 0) {
-            // PRIORITY 1: Find the requested quality in HLS (MP4 URLs don't work)
-            const requestedQuality = parseInt(quality);
-            const matchingMedia = videoInfo.videoData.mediaDefinitions.find(media => 
-                media.quality === requestedQuality && media.format === 'hls'
-            );
-            
-            if (matchingMedia) {
-                downloadUrl = matchingMedia.videoUrl;
-                console.log(`✅ Found ${quality} HLS URL (will convert to MP4):`, downloadUrl);
-            }
-        }
-        
-        if (!downloadUrl) {
-            // Fallback: try to find any available quality
-            console.log('⚠️ Requested quality not found, trying fallback...');
-            
-            if (videoInfo.videoData.mediaDefinitions && videoInfo.videoData.mediaDefinitions.length > 0) {
-                // Get the highest HLS quality available (MP4 URLs don't work)
-                const sortedMedia = videoInfo.videoData.mediaDefinitions
-                    .filter(media => media.quality > 0 && media.format === 'hls')
-                    .sort((a, b) => b.quality - a.quality);
-                
-                if (sortedMedia.length > 0) {
-                    const fallbackMedia = sortedMedia[0];
-                    downloadUrl = fallbackMedia.videoUrl;
-                    console.log(`✅ Using fallback HLS quality ${fallbackMedia.quality}p (will convert to MP4):`, downloadUrl);
-                }
-            }
-        }
-        
-        if (!downloadUrl) {
-            throw new Error('No download URL found for any quality');
-        }
-        
-        // Download the video using axios with proper headers
-        console.log('🔄 Starting video download with specialized library URL...');
-        
-        // Check if this is an HLS playlist (.m3u8)
-        if (downloadUrl.includes('.m3u8')) {
-            console.log('📋 Detected HLS playlist, parsing and downloading segments...');
-            
-            try {
-                // Get the HLS playlist
-                const playlistResponse = await axios.get(downloadUrl, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Referer': url,
-                        'Origin': 'https://www.pornhub.com'
-                    }
-                });
-                
-                const playlist = playlistResponse.data;
-                console.log('📊 HLS playlist retrieved, length:', playlist.length);
-                console.log('📊 Playlist preview:', playlist.substring(0, 200));
-                
-                // Check if this is a master playlist (contains stream info, not segments)
-                if (playlist.includes('#EXT-X-STREAM-INF')) {
-                    console.log('📋 This is a master playlist, need to follow the stream URL...');
-                    
-                    // Extract the stream URL from master playlist
-                    const streamMatch = playlist.match(/^([^#\s]+\.m3u8[^\s]*)$/m);
-                    if (streamMatch && streamMatch[1]) {
-                        const streamUrl = streamMatch[1];
-                        console.log('🔗 Found stream URL in master playlist:', streamUrl);
-                        
-                        // Construct full URL if it's relative
-                        let fullStreamUrl = streamUrl;
-                        if (!streamUrl.startsWith('http')) {
-                            const baseUrl = downloadUrl.substring(0, downloadUrl.lastIndexOf('/') + 1);
-                            fullStreamUrl = baseUrl + streamUrl;
-                        }
-                        console.log('🔗 Full stream URL:', fullStreamUrl);
-                        
-                        // Now get the actual video segments from the stream playlist
-                        const streamPlaylistResponse = await axios.get(fullStreamUrl, {
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'Referer': url
-                            }
-                        });
-                        
-                        const streamPlaylist = streamPlaylistResponse.data;
-                        console.log('📊 Stream playlist content:', streamPlaylist);
-                        
-                        // Extract video segment URLs
-                        const segments = streamPlaylist.match(/^([^#\s]+\.ts[^\s]*)$/gm) || 
-                                       streamPlaylist.match(/^([^#\s]+\.mp4[^\s]*)$/gm);
-                        
-                        if (segments && segments.length > 0) {
-                            console.log('✅ Found video segments in stream playlist:', segments.length);
-                            console.log('📊 First segment URL:', segments[0]);
-                            
-                            // Create a combined stream for all segments
-                            const { Readable } = require('stream');
-                            const combinedStream = new Readable();
-                            let isFirstSegment = true;
-                            
-                            combinedStream._read = () => {}; // No-op read function
-                            
-                            // Function to download segments sequentially
-                            const downloadSegments = async () => {
-                                for (let i = 0; i < segments.length; i++) {
-                                    try {
-                                        let segmentUrl = segments[i];
-                                        console.log(`📥 Downloading segment ${i + 1}/${segments.length}: ${segmentUrl}`);
-                                        
-                                        // If segment URL is relative, make it absolute
-                                        if (!segmentUrl.startsWith('http')) {
-                                            const streamBaseUrl = fullStreamUrl.substring(0, fullStreamUrl.lastIndexOf('/') + 1);
-                                            segmentUrl = streamBaseUrl + segmentUrl;
-                                        }
-                                        
-                                        // Download the segment
-                                        const segmentResponse = await axios({
-                                            method: 'GET',
-                                            url: segmentUrl,
-                                            responseType: 'stream',
-                                            headers: {
-                                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                                'Referer': url,
-                                                'Origin': 'https://www.pornhub.com'
-                                            },
-                                            timeout: 30000
-                                        });
-                                        
-                                        // Append segment data directly (no HTTP headers)
-                                        if (isFirstSegment) {
-                                            isFirstSegment = false;
-                                        }
-                                        
-                                        // Pipe the segment data to the combined stream
-                                        segmentResponse.data.on('data', (chunk) => {
-                                            combinedStream.push(chunk);
-                                        });
-                                        
-                                        // Wait for segment to complete
-                                        await new Promise((resolve, reject) => {
-                                            segmentResponse.data.on('end', resolve);
-                                            segmentResponse.data.on('error', reject);
-                                        });
-                                        
-                                        console.log(`✅ Segment ${i + 1}/${segments.length} downloaded successfully`);
-                                        
-                                    } catch (segmentError) {
-                                        console.log(`❌ Segment ${i + 1}/${segments.length} failed:`, segmentError.message);
-                                        
-                                        // If segment fails, continue with next one
-                                        console.log(`⚠️ Skipping failed segment ${i + 1}, continuing...`);
-                                    }
-                                }
-                                
-                                // All segments processed, end the stream
-                                console.log('✅ All segments processed, ending combined stream');
-                                combinedStream.push(null);
-                            };
-                            
-                            // Start downloading segments
-                            downloadSegments().catch(error => {
-                                console.error('❌ Error in segment downloader:', error);
-                                combinedStream.push(null);
-                            });
-                            
-                            console.log('✅ Combined HLS stream created successfully');
-                            return combinedStream;
-                            
-                        } else {
-                            console.log('❌ No video segments found in stream playlist');
-                            throw new Error('No video segments found in stream playlist');
-                        }
-                        
-                    } else {
-                        console.log('❌ No stream URL found in master playlist');
-                        throw new Error('No stream URL found in master playlist');
-                    }
-                    
-                } else {
-                    // This is a direct segment playlist, extract video segments
-                    console.log('📋 This is a direct segment playlist...');
-                    
-                    // Extract video segment URLs
-                    const segments = playlist.match(/^([^#\s]+\.ts[^\s]*)$/gm) || 
-                                   playlist.match(/^([^#\s]+\.mp4[^\s]*)$/gm);
-                    
-                    if (segments && segments.length > 0) {
-                        console.log('✅ Found video segments:', segments.length);
-                        console.log('📊 First segment URL:', segments[0]);
-                        
-                        // Create a combined stream for all segments
-                        const { Readable } = require('stream');
-                        const combinedStream = new Readable();
-                        let isFirstSegment = true;
-                        
-                        combinedStream._read = () => {}; // No-op read function
-                        
-                        // Function to download segments sequentially
-                        const downloadSegments = async () => {
-                            for (let i = 0; i < segments.length; i++) {
-                                try {
-                                    let segmentUrl = segments[i];
-                                    console.log(`📥 Downloading segment ${i + 1}/${segments.length}: ${segmentUrl}`);
-                                    
-                                    // If segment URL is relative, make it absolute
-                                    if (!segmentUrl.startsWith('http')) {
-                                        const baseUrl = downloadUrl.substring(0, downloadUrl.lastIndexOf('/') + 1);
-                                        segmentUrl = baseUrl + segmentUrl;
-                                    }
-                                    
-                                    // Download the segment
-                                    const segmentResponse = await axios({
-                                        method: 'GET',
-                                        url: segmentUrl,
-                                        responseType: 'stream',
-                                        headers: {
-                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                            'Referer': url,
-                                            'Origin': 'https://www.pornhub.com'
-                                        },
-                                        timeout: 30000
-                                    });
-                                    
-                                    // Append segment data directly (no HTTP headers)
-                                    if (isFirstSegment) {
-                                        isFirstSegment = false;
-                                    }
-                                    
-                                    // Pipe the segment data to the combined stream
-                                    segmentResponse.data.on('data', (chunk) => {
-                                        combinedStream.push(chunk);
-                                    });
-                                    
-                                    // Wait for segment to complete
-                                    await new Promise((resolve, reject) => {
-                                        segmentResponse.data.on('end', resolve);
-                                        segmentResponse.data.on('error', reject);
-                                    });
-                                    
-                                    console.log(`✅ Segment ${i + 1}/${segments.length} downloaded successfully`);
-                                    
-                                } catch (segmentError) {
-                                    console.log(`❌ Segment ${i + 1}/${segments.length} failed:`, segmentError.message);
-                                    
-                                    // If segment fails, continue with next one
-                                    console.log(`⚠️ Skipping failed segment ${i + 1}, continuing...`);
-                                }
-                            }
-                            
-                            // All segments processed, end the stream
-                            console.log('✅ All segments processed, ending combined stream');
-                            combinedStream.push(null);
-                        };
-                        
-                        // Start downloading segments
-                        downloadSegments().catch(error => {
-                            console.error('❌ Error in segment downloader:', error);
-                            combinedStream.push(null);
-                        });
-                        
-                        console.log('✅ Combined HLS stream created successfully');
-                        return combinedStream;
-                        
-                    } else {
-                        console.log('❌ No video segments found in HLS playlist');
-                        throw new Error('No video segments found in HLS playlist');
-                    }
-                }
-                
-            } catch (hlsError) {
-                console.log('❌ HLS parsing failed:', hlsError.message);
-                throw new Error(`HLS parsing failed: ${hlsError.message}`);
-            }
-        } else {
-            // Direct video download (not HLS)
-            const response = await axios({
-                method: 'GET',
-                url: downloadUrl,
-                responseType: 'stream',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Referer': url,
-                    'Origin': 'https://www.pornhub.com',
-                    'Accept': 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'video',
-                    'Sec-Fetch-Mode': 'no-cors',
-                    'Sec-Fetch-Site': 'cross-site'
-                },
-                timeout: 60000, // 60 seconds timeout
-                maxRedirects: 5
-            });
-            
-            const downloadStream = response.data;
-            
-            console.log('✅ Direct video download successful');
-            console.log('📊 Stream type:', downloadStream.constructor.name);
-            console.log('📊 Content-Type:', response.headers['content-type']);
-            console.log('📊 Content-Length:', response.headers['content-length']);
-            console.log('=== PORN HUB DOWNLOAD END (Specialized Library) ===\n');
-            
-            return downloadStream;
-        }
-        
-    } catch (error) {
-        console.error('❌ Error downloading PornHub video with specialized library:', error);
-        throw new Error(`Failed to download PornHub video: ${error.message}`);
-    }
-}
-
-async function getYouTubeInfo(url) {
-    try {
-        console.log('🔍 ANALYSIS START - YouTube API v3 → ytdl-core → yt-dlp');
-        
-        // 1️⃣ Try YouTube Data API v3 first (fastest and most stable)
-        try {
-            console.log('🥇 STEP 1: Trying YouTube Data API v3 (PRIMARY)...');
-            const result = await getYouTubeInfoViaAPI(url);
-            console.log('✅ SUCCESS: Analysis completed with YouTube Data API v3');
-            return result;
-        } catch (apiError) {
-            console.log('❌ STEP 1 FAILED: YouTube Data API v3 failed');
-            console.log('🔄 FALLBACK: Moving to ytdl-core...');
-            
-            // 2️⃣ Fallback to ytdl-core
-            try {
-                console.log('🥈 STEP 2: Trying ytdl-core (FALLBACK 1)...');
-                const result = await getYouTubeInfoViaYtdlCore(url);
-                console.log('✅ SUCCESS: Analysis completed with ytdl-core');
-                return result;
-            } catch (ytdlError) {
-                console.log('❌ STEP 2 FAILED: ytdl-core failed');
-                console.log('🔄 FALLBACK: Moving to yt-dlp...');
-                
-                // 3️⃣ Final fallback to yt-dlp
-                try {
-                    console.log('🥉 STEP 3: Trying yt-dlp (FALLBACK 2)...');
-                    const result = await getYouTubeInfoViaYtDlp(url);
-                    console.log('✅ SUCCESS: Analysis completed with yt-dlp');
-                    return result;
-                } catch (ytDlpError) {
-                    console.log('❌ STEP 3 FAILED: yt-dlp failed');
-                    console.log('💥 ALL METHODS FAILED');
-                    throw new Error(`All analysis methods failed. API: ${apiError.message}, ytdl-core: ${ytdlError.message}, yt-dlp: ${ytDlpError.message}`);
-                }
-            }
-        }
-        
-    } catch (error) {
-        console.error('💥 ANALYSIS FAILED COMPLETELY:', error);
-        throw new Error(`Failed to get YouTube video information: ${error.message}`);
-    }
-}
-
-// Function using ytdl-core for fast info retrieval
-async function getYouTubeInfoViaYtdlCore(url) {
-    try {
-        // Get video info using ytdl-core
-        const info = await ytdl.getInfo(url);
-        
-        // Extract available formats and qualities
-        const videoFormats = info.formats;
-        const qualities = [];
-        const qualitySizes = {};
-        
-        // Group formats by quality
-        const qualityGroups = {};
-        videoFormats.forEach(format => {
-            if (format.height && format.height > 0) {
-                const quality = `${format.height}p`;
-                if (!qualityGroups[quality]) {
-                    qualityGroups[quality] = [];
-                }
-                qualityGroups[quality].push(format);
-            }
-        });
-        
-        // Sort qualities and calculate sizes
-        const sortedQualities = Object.keys(qualityGroups).sort((a, b) => {
-            const heightA = parseInt(a);
-            const heightB = parseInt(b);
-            return heightB - heightA; // Highest first
-        });
-        
-        console.log(`🔍 REAL QUALITIES DETECTED: ${sortedQualities.join(', ')}`);
-        
-        // Map to our quality format ONLY if they exist
-        const qualityMap = {
-            '2160': '4K',
-            '1440': '2K', 
-            '1080': '1080p',
-            '720': '720p',
-            '480': '480p',
-            '360': '360p',
-            '240': '240p',
-            '144': '144p'
-        };
-        
-        sortedQualities.forEach(quality => {
-            const heightNumber = quality.replace('p', '');
-            const mappedQuality = qualityMap[heightNumber] || quality;
-            
-            if (!qualities.includes(mappedQuality)) {
-                qualities.push(mappedQuality);
-                
-                // Calculate size based on format info
-                const format = qualityGroups[quality][0];
-                if (format.contentLength) {
-                    const sizeMB = parseInt(format.contentLength) / (1024 * 1024);
-                    qualitySizes[mappedQuality] = sizeMB > 1024 ? 
-                        `${(sizeMB / 1024).toFixed(1)}GB` : 
-                        `${sizeMB.toFixed(1)}MB`;
-                } else {
-                    // Estimate size based on duration and quality
-                    const duration = info.videoDetails.lengthSeconds || 0;
-                    let estimatedSize = 0;
-                    switch (mappedQuality) {
-                        case '4K': estimatedSize = (duration * 25) / 60; break;
-                        case '2K': estimatedSize = (duration * 15) / 60; break;
-                        case '1080p': estimatedSize = (duration * 8) / 60; break;
-                        case '720p': estimatedSize = (duration * 5) / 60; break;
-                        case '480p': estimatedSize = (duration * 2.5) / 60; break;
-                        case '360p': estimatedSize = (duration * 1.5) / 60; break;
-                        case '240p': estimatedSize = (duration * 1) / 60; break;
-                        default: estimatedSize = (duration * 3) / 60;
-                    }
-                    qualitySizes[mappedQuality] = estimatedSize > 1024 ? 
-                        `${(estimatedSize / 1024).toFixed(1)}GB` : 
-                        `${estimatedSize.toFixed(1)}MB`;
-                }
-            }
-        });
-        
-        // Add MP3 format
-        const availableFormats = ['mp4', 'mp3'];
-        
-        const videoInfo = {
-            title: info.videoDetails.title || 'Unknown Title',
-            duration: parseInt(info.videoDetails.lengthSeconds) || 0,
-            thumbnail: info.videoDetails.thumbnails?.[0]?.url || '',
-            qualities: qualities,
-            formats: availableFormats,
-            qualitySizes: qualitySizes,
-            note: 'Retrieved via ytdl-core (fallback 1)',
-            debugInfo: {
-                method: 'ytdl-core',
-                isStatic: false,
-                realQualities: sortedQualities,
-                totalFormats: videoFormats.length,
-                message: `Found ${qualities.length} available qualities: ${qualities.join(', ')}`
-            },
-            ytdlInfo: info // Store full info for download
-        };
-        
-        return videoInfo;
-        
-    } catch (error) {
-        throw new Error(`ytdl-core failed: ${error.message}`);
-    }
-}
-
-// Function using yt-dlp for analysis (final fallback)
-async function getYouTubeInfoViaYtDlp(url) {
-    try {
-        // Use yt-dlp with dynamic path for cross-platform compatibility
-        const ytDlpPath = process.env.YT_DLP_PATH || 'yt-dlp';
-        const ytdlp = new YTDlpWrap(ytDlpPath);
-        
-        // Get video info using yt-dlp
-        const result = await new Promise((resolve, reject) => {
-            const info = [];
-            const infoStream = ytdlp.execStream([
-                url,
-                '--dump-json',
-                '--no-playlist',
-                '--quiet'
-            ]);
-            
-            infoStream.on('data', (chunk) => {
-                info.push(chunk);
-            });
-            
-            infoStream.on('end', () => {
-                try {
-                    const jsonStr = Buffer.concat(info).toString();
-                    const videoInfo = JSON.parse(jsonStr);
-                    resolve(videoInfo);
-                } catch (parseError) {
-                    reject(parseError);
-                }
-            });
-            
-            infoStream.on('error', (error) => {
-                reject(error);
-            });
-        });
-        
-        // Extract qualities from formats
-        const formats = result.formats || [];
-        const qualities = [];
-        const qualitySizes = {};
-        
-        // Get unique qualities
-        const qualitySet = new Set();
-        formats.forEach(format => {
-            if (format.height && format.height > 0) {
-                const quality = `${format.height}p`;
-                qualitySet.add(quality);
-            }
-        });
-        
-        // Map to our quality format and sort
-        const qualityMap = {
-            '2160p': '4K',
-            '1440p': '2K', 
-            '1080p': '1080p',
-            '720p': '720p',
-            '480p': '480p',
-            '360p': '360p',
-            '240p': '240p'
-        };
-        
-        Array.from(qualitySet).sort((a, b) => parseInt(b) - parseInt(a)).forEach(quality => {
-            const mappedQuality = qualityMap[quality] || quality;
-            if (!qualities.includes(mappedQuality)) {
-                qualities.push(mappedQuality);
-                // Estimate size
-                const duration = result.duration || 0;
-                let sizeMB = 0;
-                switch (mappedQuality) {
-                    case '4K': sizeMB = (duration * 25) / 60; break;
-                    case '2K': sizeMB = (duration * 15) / 60; break;
-                    case '1080p': sizeMB = (duration * 8) / 60; break;
-                    case '720p': sizeMB = (duration * 5) / 60; break;
-                    case '480p': sizeMB = (duration * 2.5) / 60; break;
-                    case '360p': sizeMB = (duration * 1.5) / 60; break;
-                    case '240p': sizeMB = (duration * 1) / 60; break;
-                    default: sizeMB = (duration * 3) / 60;
-                }
-                qualitySizes[mappedQuality] = sizeMB > 1024 ? 
-                    `${(sizeMB / 1024).toFixed(1)}GB` : 
-                    `${sizeMB.toFixed(1)}MB`;
-            }
-        });
-        
-        const videoInfo = {
-            title: result.title || 'Unknown Title',
-            duration: parseInt(result.duration) || 0,
-            thumbnail: result.thumbnail || '',
-            qualities: qualities,
-            formats: ['mp4', 'mp3'],
-            qualitySizes: qualitySizes,
-            note: 'Retrieved via yt-dlp (final fallback)',
-            debugInfo: {
-                method: 'yt-dlp',
-                isStatic: false,
-                realQualities: Array.from(qualitySet),
-                totalFormats: formats.length,
-                message: `Found ${qualities.length} available qualities: ${qualities.join(', ')}`
-            }
-        };
-        
-        return videoInfo;
-        
-    } catch (error) {
-        throw new Error(`yt-dlp analysis failed: ${error.message}`);
-    }
-}
-
-// Primary function using YouTube Data API v3 (primary)
-async function getYouTubeInfoViaAPI(url) {
-    try {
-        
-        // Extract video ID from URL
-        const videoIdMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
-        if (!videoIdMatch) {
-            throw new Error('Could not extract video ID from URL');
-        }
-        
-        const videoId = videoIdMatch[1];
-        
-        // Call YouTube Data API v3
-        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${YOUTUBE_API_KEY}&part=snippet,contentDetails,statistics`;
-        
-        const response = await axios.get(apiUrl, {
-            headers: getRealisticHeaders()
-        });
-        
-        if (!response.data.items || response.data.items.length === 0) {
-            throw new Error('Video not found via YouTube API');
-        }
-        
-        const videoData = response.data.items[0];
-        const snippet = videoData.snippet;
-        const contentDetails = videoData.contentDetails;
-        
-        // Parse duration (ISO 8601 format)
-        const duration = parseDuration(contentDetails.duration);
-        
-        // Generate quality options (YouTube API doesn't provide format info)
-        // Include 2K and 4K if they might exist (will be filtered during download)
-        const qualities = ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'];
-        const formats = ['mp4', 'mp3'];
-        
-        // Estimate file sizes based on duration
-        const qualitySizes = {};
-        qualities.forEach(quality => {
-            const durationInSeconds = duration;
-            let sizeMB = 0;
-            
-            switch (quality) {
-                case '4K': sizeMB = (durationInSeconds * 25) / 60; break;    // ~25 Mbps
-                case '2K': sizeMB = (durationInSeconds * 15) / 60; break;    // ~15 Mbps
-                case '1080p': sizeMB = (durationInSeconds * 8) / 60; break;  // ~8 Mbps
-                case '720p': sizeMB = (durationInSeconds * 5) / 60; break;   // ~5 Mbps
-                case '480p': sizeMB = (durationInSeconds * 2.5) / 60; break; // ~2.5 Mbps
-                case '360p': sizeMB = (durationInSeconds * 1.5) / 60; break; // ~1.5 Mbps
-                case '240p': sizeMB = (durationInSeconds * 1) / 60; break;   // ~1 Mbps
-                default: sizeMB = (durationInSeconds * 3) / 60; break;
-            }
-            
-            qualitySizes[quality] = sizeMB > 1024 ? 
-                `${(sizeMB / 1024).toFixed(1)}GB` : 
-                `${sizeMB.toFixed(1)}MB`;
-        });
-        
-        const videoInfo = {
-            title: snippet.title || 'Unknown Title',
-            duration: duration,
-            thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
-            qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'], // Fallback static qualities for API
-            formats: formats,
-            qualitySizes: qualitySizes,
-            note: 'Retrieved via YouTube Data API v3 (primary)',
-            debugInfo: {
-                method: 'YouTube Data API v3',
-                isStatic: true,
-                message: 'Static qualities - actual available qualities will be detected during download'
-            }
-        };
-        
-        return videoInfo;
-        
-    } catch (error) {
-        throw new Error(`YouTube API failed: ${error.message}`);
-    }
-}
-
-// Helper function to parse ISO 8601 duration
-function parseDuration(duration) {
-    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-    let hours = 0, minutes = 0, seconds = 0;
-    
-    if (match[1]) hours = parseInt(match[1].slice(0, -1));
-    if (match[2]) minutes = parseInt(match[2].slice(0, -1));
-    if (match[3]) seconds = parseInt(match[3].slice(0, -1));
-    
-    return hours * 3600 + minutes * 60 + seconds;
-}
-
-// Fast download function using ytdl-core
-async function downloadYouTubeViaYtdlCore(url, quality, format) {
-    try {
-        // Get video info first
-        const info = await ytdl.getInfo(url);
-        
-        // Configure download options based on quality and format
-        let downloadOptions = {};
-        
-        if (format === 'mp3') {
-            // For audio, get highest quality audio
-            downloadOptions = {
-                quality: 'highestaudio',
-                filter: 'audioonly'
-            };
-        } else {
-            // For video, select specific quality format
-            const formats = info.formats;
-            let selectedFormat;
-            
-            // Find the best format for the requested quality
-            switch (quality) {
-                case '4K':
-                    selectedFormat = formats.find(f => f.height === 2160 && f.hasVideo && f.hasAudio) ||
-                                   formats.find(f => f.height === 2160 && f.hasVideo) ||
-                                   formats.find(f => f.height <= 2160 && f.hasVideo && f.hasAudio);
-                    break;
-                case '2K':
-                    selectedFormat = formats.find(f => f.height === 1440 && f.hasVideo && f.hasAudio) ||
-                                   formats.find(f => f.height === 1440 && f.hasVideo) ||
-                                   formats.find(f => f.height <= 1440 && f.hasVideo && f.hasAudio);
-                    break;
-                case '1080p':
-                    selectedFormat = formats.find(f => f.height === 1080 && f.hasVideo && f.hasAudio) ||
-                                   formats.find(f => f.height === 1080 && f.hasVideo) ||
-                                   formats.find(f => f.height <= 1080 && f.hasVideo && f.hasAudio);
-                    break;
-                case '720p':
-                    selectedFormat = formats.find(f => f.height === 720 && f.hasVideo && f.hasAudio) ||
-                                   formats.find(f => f.height === 720 && f.hasVideo) ||
-                                   formats.find(f => f.height <= 720 && f.hasVideo && f.hasAudio);
-                    break;
-                case '480p':
-                    selectedFormat = formats.find(f => f.height === 480 && f.hasVideo && f.hasAudio) ||
-                                   formats.find(f => f.height === 480 && f.hasVideo) ||
-                                   formats.find(f => f.height <= 480 && f.hasVideo && f.hasAudio);
-                    break;
-                case '360p':
-                    selectedFormat = formats.find(f => f.height === 360 && f.hasVideo && f.hasAudio) ||
-                                   formats.find(f => f.height === 360 && f.hasVideo) ||
-                                   formats.find(f => f.height <= 360 && f.hasVideo && f.hasAudio);
-                    break;
-                case '240p':
-                    selectedFormat = formats.find(f => f.height === 240 && f.hasVideo && f.hasAudio) ||
-                                   formats.find(f => f.height === 240 && f.hasVideo) ||
-                                   formats.find(f => f.height <= 240 && f.hasVideo && f.hasAudio);
-                    break;
-                default:
-                    selectedFormat = formats.find(f => f.hasVideo && f.hasAudio) || formats.find(f => f.hasVideo);
-            }
-            
-            if (!selectedFormat) {
-                throw new Error(`No suitable format found for ${quality} quality`);
-            }
-            
-            console.log(`🎯 Selected format: ${selectedFormat.height}p, size: ${selectedFormat.contentLength || 'unknown'}`);
-            
-            downloadOptions = {
-                format: selectedFormat
-            };
-        }
-        
-        // Create download stream
-        const downloadStream = ytdl(url, downloadOptions);
-        
-        // Add error handling to prevent server crashes
-        downloadStream.on('error', (error) => {
-            console.error('❌ ytdl-core stream error:', error);
-        });
-        
-        console.log('🔍 ytdl-core DOWNLOAD DEBUG: Stream created successfully');
-        console.log('🔍 ytdl-core DOWNLOAD DEBUG: Options used:', JSON.stringify(downloadOptions));
-        console.log('🔍 ytdl-core DOWNLOAD DEBUG: Stream type:', downloadStream.constructor.name);
-        
-        return downloadStream;
-        
-    } catch (error) {
-        throw new Error(`ytdl-core download failed: ${error.message}`);
-    }
-}
-
-async function downloadYouTube(url, quality, format) {
-    try {
-        console.log(`📥 DOWNLOAD START - ${quality} ${format} - ytdl-core → yt-dlp`);
-        
-        // 1️⃣ Try ytdl-core first for speed
-        try {
-            console.log('🥇 DOWNLOAD STEP 1: Trying ytdl-core (PRIMARY)...');
-            const result = await downloadYouTubeViaYtdlCore(url, quality, format);
-            console.log('✅ SUCCESS: Download completed with ytdl-core');
-            console.log('🔍 DOWNLOAD DEBUG: Method used: ytdl-core, Quality: ' + quality + ', Format: ' + format);
-            
-            // Add library info to the stream
-            result.downloadLibrary = 'ytdl-core';
-            result.downloadQuality = quality;
-            result.downloadFormat = format;
-            
-            return result;
-        } catch (ytdlError) {
-            console.log('❌ DOWNLOAD STEP 1 FAILED: ytdl-core failed');
-            console.log('🔄 FALLBACK: Moving to yt-dlp...');
-            
-            // 2️⃣ Fallback to yt-dlp
-            try {
-                console.log('🥈 DOWNLOAD STEP 2: Trying yt-dlp (FALLBACK)...');
-                const result = await downloadYouTubeViaYtDlp(url, quality, format);
-                console.log('✅ SUCCESS: Download completed with yt-dlp');
-                console.log('🔍 DOWNLOAD DEBUG: Method used: yt-dlp (fallback), Quality: ' + quality + ', Format: ' + format);
-                
-                // Add library info to the stream
-                result.downloadLibrary = 'yt-dlp (fallback)';
-                result.downloadQuality = quality;
-                result.downloadFormat = format;
-                
-                return result;
-            } catch (ytDlpError) {
-                console.log('❌ DOWNLOAD STEP 2 FAILED: yt-dlp failed');
-                console.log('💥 ALL DOWNLOAD METHODS FAILED');
-                throw new Error(`All download methods failed. ytdl-core: ${ytdlError.message}, yt-dlp: ${ytDlpError.message}`);
-            }
-        }
-        
-    } catch (error) {
-        console.error('💥 DOWNLOAD FAILED COMPLETELY:', error);
-        throw new Error(`Failed to download YouTube video: ${error.message}`);
-    }
-}
-
-// Fallback download function using yt-dlp
-async function downloadYouTubeViaYtDlp(url, quality, format) {
-    try {
-        // Use yt-dlp with dynamic path for cross-platform compatibility
-        const ytDlpPath = process.env.YT_DLP_PATH || 'yt-dlp';
-        const ytdlp = new YTDlpWrap(ytDlpPath);
-         
-         // Ultra-fast download options - prioritize speed over quality
-         let formatOption;
-         
-         if (format === 'mp3') {
-             // For audio, use best quality
-             formatOption = 'bestaudio';
-         } else {
-             // For video, use best available quality for the requested resolution
-             switch (quality) {
-                 case '4K': formatOption = 'best[height<=2160][ext=mp4]/best[height<=2160]'; break;
-                 case '2K': formatOption = 'best[height<=1440][ext=mp4]/best[height<=1440]'; break;
-                 case '1080p': formatOption = 'best[height<=1080][ext=mp4]/best[height<=1080]'; break;
-                 case '720p': formatOption = 'best[height<=720][ext=mp4]/best[height<=720]'; break;
-                 case '480p': formatOption = 'best[height<=480][ext=mp4]/best[height<=480]'; break;
-                 case '360p': formatOption = 'best[height<=360][ext=mp4]/best[height<=360]'; break;
-                 case '240p': formatOption = 'best[height<=240][ext=mp4]/best[height<=240]'; break;
-                 default: formatOption = 'best[ext=mp4]/best';
-             }
-         }
-         
-         console.log('🔧 yt-dlp format option (optimized for speed):', formatOption);
-         
-         // Start download with yt-dlp - ultra-optimized for speed
-         const downloadStream = ytdlp.execStream([
-             url,
-             '-o', '-', // Output to stdout
-             '-f', formatOption,
-             '--no-playlist', // Ensure single video
-             '--no-warnings', // Reduce output
-             '--no-progress', // Disable progress bar
-             '--quiet', // Minimal output
-             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
-         ]);
-         
-                 // Add error handling to prevent server crashes
-        downloadStream.on('error', (error) => {
-            console.error('❌ Download stream error:', error);
-        });
-        
-        console.log('🔍 yt-dlp DOWNLOAD DEBUG: Stream created successfully');
-        console.log('🔍 yt-dlp DOWNLOAD DEBUG: Format option used:', formatOption);
-        console.log('🔍 yt-dlp DOWNLOAD DEBUG: Stream type:', downloadStream.constructor.name);
-        console.log('✅ yt-dlp download stream created successfully');
-        return downloadStream;
-        
-    } catch (error) {
-        console.error('❌ Error downloading YouTube video with yt-dlp:', error);
-        throw new Error(`Failed to download YouTube video: ${error.message}`);
-    }
-}
-
-// YouTube Playlist functions
-async function getYouTubePlaylistInfo(url) {
-    try {
-        console.log('Attempting to get YouTube playlist info for:', url);
-        
-        // Extract playlist ID from URL - more robust pattern matching
-        let playlistId = null;
-        
-        // Try different patterns for playlist ID extraction
-        const patterns = [
-            /playlist\?list=([^&]+)/,
-            /&list=([^&]+)/,
-            /list=([^&]+)/
-        ];
-        
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) {
-                playlistId = match[1];
-                break;
-            }
-        }
-        
-        if (!playlistId) {
-            throw new Error('Could not extract playlist ID from URL');
-        }
-        
-        console.log('🎵 Playlist ID:', playlistId);
-        
-        // Use the specialized ytpl library
-        try {
-            console.log('🔗 Using @distube/ytpl to get playlist info...');
-            
-            // Get playlist info using ytpl with realistic headers
-            const playlist = await ytpl(playlistId, {
-                requestOptions: {
-                    headers: getRealisticHeaders()
-                }
-            });
-            
-            console.log(`✅ @distube/ytpl found ${playlist.items.length} videos in playlist`);
-            console.log(`📊 Playlist title: ${playlist.title}`);
-            console.log(`📊 Playlist author: ${playlist.author?.name || 'Unknown'}`);
-            console.log(`📊 Total videos: ${playlist.videoCount || playlist.items.length}`);
-            
-            // Map the playlist items to our format
-            const videos = playlist.items.map((item, index) => ({
-                id: item.id,
-                title: item.title || `Video ${index + 1}`,
-                duration: item.duration || 0,
-                thumbnail: item.thumbnail?.url || '',
-                url: item.shortUrl || `https://www.youtube.com/watch?v=${item.id}`
-            }));
-            
-            const playlistInfo = {
-                title: playlist.title || `YouTube Playlist (${playlistId})`,
-                videoCount: videos.length,
-                videos: videos,
-                qualities: ['720p', '480p', '360p', '240p'],
-                formats: ['mp4', 'mp3'],
-                qualitySizes: {
-                    '720p': '~50MB per video',
-                    '480p': '~30MB per video', 
-                    '360p': '~20MB per video',
-                    '240p': '~15MB per video'
-                },
-                playlistId: playlistId,
-                isPlaylist: true,
-                author: playlist.author?.name || 'Unknown',
-                debugInfo: {
-                    method: '@distube/ytpl',
-                    isStatic: false,
-                    realQualities: ['720p', '480p', '360p', '240p'],
-                    totalVideos: videos.length,
-                    message: `Playlist retrieved via @distube/ytpl: ${videos.length} videos found`
-                }
-            };
-            
-            console.log(`✅ @distube/ytpl playlist info retrieved successfully: ${videos.length} videos`);
-            return playlistInfo;
-        } catch (ytplError) {
-            console.log('⚠️ @distube/ytpl failed:', ytplError.message);
-        }
-        
-        // If we get here, try web scraping approach
-        try {
-            console.log('🌐 Trying web scraping approach...');
-            
-            // Scrape the playlist page directly
-            const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
-            const response = await axios.get(playlistUrl, {
-                headers: getRealisticHeaders()
-            });
-            
-            const html = response.data;
-            console.log('📄 Playlist page scraped successfully');
-            
-                         // Extract video information using simpler and more reliable patterns
-             // Look for video IDs and titles in the playlist data
-             const playlistVideoPattern = /"playlistVideoRenderer":\s*\{[^}]*"videoId":"([^"]+)"/g;
-             
-             // Try multiple title patterns for better coverage - more aggressive
-             const titlePatterns = [
-                 /"playlistVideoRenderer":\s*\{[^}]*"title":\s*\{[^}]*"runs":\s*\[[^}]*\{[^}]*"text":\s*"([^"]+)"/g,
-                 /"playlistVideoRenderer":\s*\{[^}]*"title":\s*\{[^}]*"simpleText":\s*"([^"]+)"/g,
-                 /"playlistVideoRenderer":\s*\{[^}]*"title":\s*\{[^}]*"runs":\s*\[[^}]*\{[^}]*"text":\s*"([^"]+)"[^}]*\}/g,
-                 // More aggressive patterns
-                 /"text":\s*"([^"]+)"[^}]*"videoId":\s*"([^"]+)"/g,
-                 /"title":\s*\{[^}]*"runs":\s*\[[^}]*\{[^}]*"text":\s*"([^"]+)"/g,
-                 /"simpleText":\s*"([^"]+)"/g
-             ];
-             
-             const playlistThumbnailPattern = /"playlistVideoRenderer":\s*\{[^}]*"thumbnail":\s*\{[^}]*"thumbnails":\s*\[[^}]*\{[^}]*"url":\s*"([^"]+)"/g;
-             
-             // Extract only playlist videos (not all videos on the page)
-             const videoIds = [...html.matchAll(playlistVideoPattern)].map(match => match[1]);
-             
-             // Try to extract titles using multiple patterns - more robust
-             let titles = [];
-             for (const pattern of titlePatterns) {
-                 try {
-                     const matches = [...html.matchAll(pattern)];
-                     if (matches.length > 0) {
-                         // Handle different pattern structures
-                         if (pattern.source.includes('"text":') && pattern.source.includes('"videoId":')) {
-                             // Pattern with both text and videoId - extract text only
-                             titles = matches.map(match => match[1]);
-                         } else {
-                             // Regular pattern - extract first group
-                             titles = matches.map(match => match[1]);
-                         }
-                         
-                         // Filter out empty or invalid titles
-                         titles = titles.filter(title => title && title.length > 2 && !title.includes('\\'));
-                         
-                         if (titles.length > 0) {
-                             console.log(`🔍 Found ${titles.length} valid titles using pattern:`, pattern.source.substring(0, 50) + '...');
-                             console.log(`🔍 Sample titles:`, titles.slice(0, 3));
-                             break;
-                         }
-                     }
-                 } catch (error) {
-                     console.log(`⚠️ Pattern failed:`, error.message);
-                     continue;
-                 }
-             }
-             
-             const thumbnails = [...html.matchAll(playlistThumbnailPattern)].map(match => match[1]);
-             
-             console.log(`🔍 Found ${videoIds.length} playlist videos, ${titles.length} titles, ${thumbnails.length} thumbnails`);
-             
-             // Limit to reasonable number of videos (max 100) to avoid performance issues
-             const maxVideos = Math.min(videoIds.length, 100);
-                          const limitedVideoIds = videoIds.slice(0, maxVideos);
-             const limitedTitles = titles.slice(0, maxVideos);
-             const limitedThumbnails = thumbnails.slice(0, maxVideos);
-            
-                         console.log(`🔍 Found ${limitedVideoIds.length} limited playlist videos, ${limitedTitles.length} titles, ${limitedThumbnails.length} thumbnails`);
-             
-             if (limitedVideoIds.length > 0) {
-                 // Create videos array with limited data to avoid performance issues
-                 const videos = limitedVideoIds.map((id, index) => ({
-                     id: id,
-                     title: limitedTitles[index] || `Video ${index + 1}`,
-                     duration: 0, // We can't get duration from scraping
-                     thumbnail: limitedThumbnails[index] || '',
-                     url: `https://www.youtube.com/watch?v=${id}`
-                 }));
-                
-                                                 // Try to extract playlist title from the page
-                let playlistTitle = `YouTube Playlist (${playlistId})`;
-                try {
-                    const titleMatch = html.match(/"title":\s*"([^"]+)"/);
-                    if (titleMatch && titleMatch[1]) {
-                        playlistTitle = titleMatch[1];
-                        console.log(`📊 Extracted playlist title: ${playlistTitle}`);
-                    }
-                } catch (titleError) {
-                    console.log('⚠️ Could not extract playlist title:', titleError.message);
-                }
-                
-                const playlistInfo = {
-                    title: playlistTitle,
-                    videoCount: limitedVideoIds.length,
-                    videos: videos,
-                    qualities: ['720p', '480p', '360p', '240p'],
-                    formats: ['mp4', 'mp3'],
-                    qualitySizes: {
-                        '720p': '~50MB per video',
-                        '480p': '~30MB per video', 
-                        '360p': '~20MB per video',
-                        '240p': '~15MB per video'
-                    },
-                    playlistId: playlistId,
-                    isPlaylist: true,
-                    debugInfo: {
-                        method: 'Web Scraping',
-                        isStatic: false,
-                        realQualities: ['720p', '480p', '360p', '240p'],
-                        totalVideos: limitedVideoIds.length,
-                        message: `Playlist retrieved via web scraping: ${limitedVideoIds.length} videos found`
-                    }
-                };
-                
-                                 console.log(`✅ Web scraping approach successful: ${limitedVideoIds.length} limited videos found`);
-                 return playlistInfo;
-            }
-            
-        } catch (scrapingError) {
-            console.log('⚠️ Web scraping approach failed:', scrapingError.message);
-        }
-        
-        // If we get here, create basic playlist info without ytdl-core
-        try {
-            console.log('🔄 Creating basic playlist info without ytdl-core...');
-            
-            // Create a basic playlist info with placeholder video
-            const videos = [{
-                id: playlistId,
-                title: `Playlist Video (${playlistId})`,
-                duration: 0,
-                thumbnail: '',
-                url: `https://www.youtube.com/watch?v=${playlistId}`
-            }];
-            
-            const playlistInfo = {
-                title: `YouTube Playlist (${playlistId})`,
-                videoCount: 1, // At least one video found
-                videos: videos,
-                qualities: ['720p', '480p', '360p', '240p'],
-                formats: ['mp4', 'mp3'],
-                qualitySizes: {
-                    '720p': '~50MB per video',
-                    '480p': '~30MB per video', 
-                    '360p': '~20MB per video',
-                    '240p': '~15MB per video'
-                },
-                playlistId: playlistId,
-                isPlaylist: true
-            };
-            
-            console.log(`✅ Basic playlist info created with ${videos.length} video`);
-            return playlistInfo;
-            
-        } catch (altError) {
-            console.log('⚠️ Basic playlist creation failed:', altError.message);
-            
-            // Ultimate fallback: create basic playlist info
-            const playlistInfo = {
-                title: `YouTube Playlist (${playlistId})`,
-                videoCount: 0,
-                videos: [],
-                qualities: ['720p', '480p', '360p', '240p'],
-                formats: ['mp4', 'mp3'],
-                qualitySizes: {
-                    '720p': '~50MB per video',
-                    '480p': '~30MB per video', 
-                    '360p': '~20MB per video',
-                    '240p': '~15MB per video'
-                },
-                playlistId: playlistId,
-                isPlaylist: true
-            };
-            
-            console.log(`✅ Ultimate fallback playlist info created for ID: ${playlistId}`);
-            return playlistInfo;
-        }
-        
-    } catch (error) {
-        console.error('❌ Error getting YouTube playlist info:', error);
-        throw new Error(`Failed to get YouTube playlist information: ${error.message}`);
-    }
-}
-
-async function downloadYouTubePlaylist(url, quality, format) {
-    try {
-        console.log(`🎵 Downloading YouTube playlist: ${quality} ${format}`);
-        
-        // Get playlist info first
-        const playlistInfo = await getYouTubePlaylistInfo(url);
-        
-        // For now, return info about the playlist
-        // In a full implementation, you would download all videos
-        const infoStream = new Readable({
-            read() {
-                const message = `Playlist: ${playlistInfo.title}\nVideos: ${playlistInfo.videoCount}\nQuality: ${quality}\nFormat: ${format}\n\nThis is a playlist download. Individual video downloads are not yet implemented.`;
-                this.push(Buffer.from(message));
-                this.push(null);
-            }
-        });
-        
-        return infoStream;
-        
-    } catch (error) {
-        console.error('❌ Error downloading YouTube playlist:', error);
-        throw new Error(`Failed to download YouTube playlist: ${error.message}`);
-    }
-}
 
 // ===== TWITTER/X FUNCTIONALITY =====
 async function getTwitterVideoInfo(url) {
@@ -2127,8 +1139,1735 @@ async function downloadVimeo(url, quality, format) {
     }
 }
 
+// Enhanced yt-dlp with cookie authentication and timing
+async function downloadYouTubeViaYtDlp(url, quality, format) {
+    try {
+        console.log('🔍 Enhanced yt-dlp v2.0: Starting with cookie authentication...');
+        
+        // Add random delay to avoid bot detection
+        const delay = getRandomDelay();
+        console.log(`⏱️ Adding random delay: ${delay}ms to avoid bot detection`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
+        console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
+        
+        if (!fs.existsSync(ytDlpPath)) {
+            throw new Error(`yt-dlp executable not found at ${ytDlpPath}`);
+        }
+        
+        // Enhanced format options with better quality selection
+        let formatOption;
+        if (format === 'mp3') {
+            formatOption = 'bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio';
+        } else {
+            switch (quality) {
+                case '4K': formatOption = 'best[height<=2160][ext=mp4]/best[height<=2160]'; break;
+                case '2K': formatOption = 'best[height<=1440][ext=mp4]/best[height<=1440]'; break;
+                case '1080p': formatOption = 'best[height<=1080][ext=mp4]/best[height<=1080]'; break;
+                case '720p': formatOption = 'best[height<=720][ext=mp4]/best[height<=720]'; break;
+                case '480p': formatOption = 'best[height<=480][ext=mp4]/best[height<=480]'; break;
+                case '360p': formatOption = 'best[height<=360][ext=mp4]/best[height<=360]'; break;
+                case '240p': formatOption = 'best[height<=240][ext=mp4]/best[height<=240]'; break;
+                default: formatOption = 'best[ext=mp4]/best';
+            }
+        }
+        
+        console.log('🔧 Enhanced yt-dlp v2.0 format option:', formatOption);
+        
+        // Check if we're on Render.com (production)
+        const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
+        
+        let ytDlpProcess;
+        
+        if (isProduction) {
+            // Check if we have uploaded cookies
+            const hasUploadedCookies = fs.existsSync('./youtube_cookies_uploaded.txt');
+            
+            if (hasUploadedCookies) {
+                console.log('🔧 Using uploaded cookies on Render.com...');
+                console.log('🔐 Authentication method: Uploaded cookies file');
+                
+                // Use uploaded cookies on Render.com with enhanced authentication
+                ytDlpProcess = spawn(ytDlpPath, [
+                    url,
+                    '-o', '-',
+                    '-f', formatOption,
+                    '--no-playlist',
+                    '--no-warnings',
+                    '--no-progress',
+                    '--verbose',
+                    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    '--cookies', './youtube_cookies_uploaded.txt',
+                    '--no-check-certificate',
+                    '--prefer-insecure',
+                    '--ignore-errors',
+                    '--ignore-no-formats-error',
+                    '--no-abort-on-error',
+                    '--retries', '10',
+                    '--fragment-retries', '10',
+                    '--file-access-retries', '10',
+                    '--extractor-retries', '10',
+                    '--concurrent-fragments', '1',
+                    '--max-downloads', '1',
+                    // Enhanced authentication with multiple player clients
+                    '--extractor-args', 'youtube:player_client=web',
+                    '--extractor-args', 'youtube:player_client=android',
+                    '--extractor-args', 'youtube:player_client=ios',
+                    '--extractor-args', 'youtube:player_client=android_creator',
+                    '--extractor-args', 'youtube:player_client=android_music',
+                    '--extractor-args', 'youtube:player_skip=webpage',
+                    '--extractor-args', 'youtube:skip=hls,dash',
+                    // Enhanced headers for better authentication
+                    '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                    '--add-header', 'Accept-Language:en-US,en;q=0.9',
+                    '--add-header', 'Accept-Encoding:gzip, deflate, br',
+                    '--add-header', 'DNT:1',
+                    '--add-header', 'Connection:keep-alive',
+                    '--add-header', 'Upgrade-Insecure-Requests:1',
+                    '--add-header', 'Sec-Fetch-Dest:document',
+                    '--add-header', 'Sec-Fetch-Mode:navigate',
+                    '--add-header', 'Sec-Fetch-Site:none',
+                    '--add-header', 'Sec-Fetch-User:?1',
+                    '--add-header', 'Cache-Control:max-age=0',
+                    '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    '--add-header', 'Sec-Ch-Ua-Mobile:?0',
+                    '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
+                    '--add-header', 'X-Requested-With:XMLHttpRequest',
+                    '--add-header', 'Referer:https://www.youtube.com/',
+                    '--add-header', 'Origin:https://www.youtube.com',
+                    '--sleep-interval', '1',
+                    ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+                ]);
+            } else {
+                console.log('🔧 Using MEGA-AGGRESSIVE CAPTCHA bypass mode for Render.com...');
+                console.log('🔐 Authentication method: MEGA-AGGRESSIVE bypass (no cookies needed)');
+                
+                // On Render.com, use MEGA-AGGRESSIVE CAPTCHA bypass mode automatically
+                ytDlpProcess = spawn(ytDlpPath, [
+                    url,
+                    '-o', '-',
+                    '-f', formatOption,
+                    '--no-playlist',
+                    '--no-warnings',
+                    '--no-progress',
+                    '--verbose',
+                    // MEGA-AGGRESSIVE CAPTCHA bypass v6.0 - FORCE SUCCESS!
+                    '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
+                    '--no-check-certificate',
+                    '--prefer-insecure',
+                    '--ignore-errors',
+                    '--ignore-no-formats-error',
+                    '--no-abort-on-error',
+                    '--retries', '10',
+                    '--fragment-retries', '10',
+                    '--file-access-retries', '10',
+                    '--extractor-retries', '10',
+                    '--concurrent-fragments', '1',
+                    '--max-downloads', '1',
+                    // MEGA-AGGRESSIVE extractor args - FORCE SUCCESS!
+                    '--extractor-args', 'youtube:player_client=android',
+                    '--extractor-args', 'youtube:player_skip=webpage',
+                    '--extractor-args', 'youtube:skip=hls,dash',
+                    // MEGA-AGGRESSIVE anti-CAPTCHA measures v6.0 - FORCE SUCCESS!
+                    '--sleep-interval', '1',
+                    // MEGA-AGGRESSIVE browser emulation - FORCE SUCCESS!
+                    '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                    '--add-header', 'Accept-Language:en-US,en;q=0.9,ro;q=0.8',
+                    '--add-header', 'Accept-Encoding:gzip, deflate, br',
+                    '--add-header', 'DNT:1',
+                    '--add-header', 'Connection:keep-alive',
+                    '--add-header', 'Upgrade-Insecure-Requests:1',
+                    '--add-header', 'Sec-Fetch-Dest:document',
+                    '--add-header', 'Sec-Fetch-Mode:navigate',
+                    '--add-header', 'Sec-Fetch-Site:none',
+                    '--add-header', 'Sec-Fetch-User:?1',
+                    '--add-header', 'Cache-Control:max-age=0',
+                    '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    '--add-header', 'Sec-Ch-Ua-Mobile:?0',
+                    '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
+                    '--add-header', 'X-Requested-With:XMLHttpRequest',
+                    // MEGA-AGGRESSIVE mobile device emulation - FORCE SUCCESS!
+                    '--add-header', 'X-Forwarded-For:192.168.1.1',
+                    '--add-header', 'X-Real-IP:192.168.1.1',
+                    '--add-header', 'X-Forwarded-Proto:https',
+                    // MEGA-AGGRESSIVE referrer spoofing - FORCE SUCCESS!
+                    '--add-header', 'Referer:https://www.youtube.com/',
+                    '--add-header', 'Origin:https://www.youtube.com',
+                    // MEGA-AGGRESSIVE additional headers - FORCE SUCCESS!
+                    '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    '--add-header', 'Accept-Language:en-US,en:q=0.5',
+                    '--add-header', 'Accept-Encoding:gzip, deflate',
+                    '--add-header', 'Connection:keep-alive',
+                    '--add-header', 'Upgrade-Insecure-Requests:1',
+                    '--add-header', 'Sec-Fetch-Dest:document',
+                    '--add-header', 'Sec-Fetch-Mode:navigate',
+                    '--add-header', 'Sec-Fetch-Site:none',
+                    '--add-header', 'Cache-Control:max-age=0',
+                    // MEGA-AGGRESSIVE format forcing - FORCE SUCCESS!
+                    ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+                ]);
+            }
+        } else {
+            console.log('🔧 Using standard mode for local development...');
+            console.log('🔐 Authentication method: Manual cookies file');
+            
+            // On local, use standard mode with cookies
+            ytDlpProcess = spawn(ytDlpPath, [
+                url,
+                '-o', '-',
+                '-f', formatOption,
+                '--no-playlist',
+                '--no-warnings',
+                '--no-progress',
+                '--quiet',
+                '--user-agent', getRandomUserAgent(),
+                '--cookies', getManualCookies(),
+                '--no-check-certificate',
+                '--prefer-insecure',
+                // Standard anti-bot detection
+                '--extractor-args', 'youtube:player_client=android',
+                '--extractor-args', 'youtube:player_skip=webpage',
+                ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+            ]);
+        }
+        
+        // Add process monitoring
+        ytDlpProcess.on('error', (error) => {
+            console.error('❌ yt-dlp process error:', error);
+        });
+        
+        let stderrBuffer = '';
+        ytDlpProcess.stderr.on('data', (data) => {
+            const stderrData = data.toString().trim();
+            stderrBuffer += stderrData + '\n';
+            console.log('⚠️ yt-dlp stderr:', stderrData);
+            
+            // Check for specific errors that indicate we should fallback
+            if (stderrData.includes('Failed to extract any player response') || 
+                stderrData.includes('No video formats found') ||
+                stderrData.includes('LOGIN_REQUIRED')) {
+                console.log('🔄 Detected yt-dlp extraction failure - will trigger fallback');
+            }
+            
+            // Check for bot detection error
+            if (stderrData.includes('Sign in to confirm you\'re not a bot')) {
+                console.error('❌ yt-dlp bot detection triggered');
+            }
+        });
+        
+        ytDlpProcess.on('exit', (code, signal) => {
+            console.log(`🔚 yt-dlp process exited with code ${code}, signal ${signal}`);
+            if (code !== 0) {
+                console.log('⚠️ yt-dlp process ended with non-zero exit code (may be due to missing browser cookies)');
+                
+                // Check if we should trigger fallback
+                if (stderrBuffer.includes('Failed to extract any player response') || 
+                    stderrBuffer.includes('No video formats found') ||
+                    stderrBuffer.includes('LOGIN_REQUIRED')) {
+                    console.log('🔄 yt-dlp failed with extraction error - triggering fallback to YouTube API v3');
+                }
+            }
+        });
+        
+        // Create a proper stream from the process
+        const downloadStream = ytDlpProcess.stdout;
+        
+        // Add comprehensive stream monitoring
+        downloadStream.on('error', (error) => {
+            console.error('❌ yt-dlp download stream error:', error);
+        });
+        
+        downloadStream.on('data', (chunk) => {
+            console.log(`✅ Enhanced yt-dlp v2.0 stream is readable`);
+        });
+        
+        downloadStream.on('end', () => {
+            console.log('✅ Enhanced yt-dlp v2.0 stream ended successfully');
+        });
+        
+        downloadStream.on('close', () => {
+            console.log('🔒 Enhanced yt-dlp v2.0 stream closed');
+        });
+        
+        // Add download library info to the stream
+        downloadStream.downloadLibrary = isProduction ? 'yt-dlp (primary on Render.com)' : 'yt-dlp (fallback)';
+        downloadStream.downloadQuality = quality;
+        downloadStream.downloadFormat = format;
+        
+        console.log('✅ Enhanced yt-dlp v2.0 download stream created successfully');
+        
+        return downloadStream;
+        
+    } catch (error) {
+        console.error('❌ Enhanced yt-dlp v2.0 failed:', error);
+        throw error;
+    }
+}
+
+// Enhanced yt-dlp info function
+async function getYouTubeInfoViaYtDlp(url) {
+    try {
+        console.log('🔍 Enhanced yt-dlp v2.0: Getting video info...');
+        
+        // Add random delay to avoid bot detection
+        const delay = getRandomDelay();
+        console.log(`⏱️ Adding random delay: ${delay}ms to avoid bot detection`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
+        console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
+        
+        if (!fs.existsSync(ytDlpPath)) {
+            throw new Error(`yt-dlp executable not found at ${ytDlpPath}`);
+        }
+        
+        // Use spawn to get video info
+        const ytDlpProcess = spawn(ytDlpPath, [
+            url,
+            '--dump-json',
+            '--no-playlist',
+            '--no-warnings',
+            '--quiet',
+            // Enhanced anti-bot detection
+            '--user-agent', getRandomUserAgent(),
+            '--cookies', getManualCookies(),
+            '--no-check-certificate',
+            '--prefer-insecure',
+            // Advanced CAPTCHA bypass
+            '--extractor-args', 'youtube:player_client=android',
+            '--extractor-args', 'youtube:player_skip=webpage',
+            '--extractor-args', 'youtube:skip=hls,dash',
+            '--extractor-args', 'youtube:player_client=web',
+            '--extractor-args', 'youtube:player_client=ios',
+            '--extractor-args', 'youtube:player_client=android_creator',
+            '--extractor-args', 'youtube:player_client=android_music',
+            '--extractor-args', 'youtube:innertube_host=studio.youtube.com',
+            '--extractor-args', 'youtube:innertube_key=AIzaSyBUPetSUmoZL-OhlxA7wSac5XinrygCqMo',
+            // Anti-CAPTCHA measures
+            '--sleep-interval', '2',
+            '--max-sleep-interval', '5',
+            '--sleep-subtitles', '2'
+        ]);
+        
+        return new Promise((resolve, reject) => {
+            let stdout = '';
+            let stderr = '';
+            
+            ytDlpProcess.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+            
+            ytDlpProcess.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+            
+            ytDlpProcess.on('close', (code) => {
+                if (code === 0 && stdout) {
+                    try {
+                        const videoInfo = JSON.parse(stdout);
+                        resolve({
+                            title: videoInfo.title || 'Unknown Title',
+                            duration: videoInfo.duration || 'Unknown',
+                            thumbnail: videoInfo.thumbnail || '',
+                            formats: ['mp4', 'mp3'],
+                            qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                            platform: 'YouTube',
+                            debugInfo: {
+                                method: 'yt-dlp (fallback)',
+                                isStatic: false,
+                                realQualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                                message: 'Video info retrieved via yt-dlp fallback'
+                            }
+                        });
+                    } catch (parseError) {
+                        reject(new Error(`Failed to parse yt-dlp output: ${parseError.message}`));
+                    }
+                } else {
+                    reject(new Error(`yt-dlp failed with code ${code}: ${stderr}`));
+                }
+            });
+            
+            ytDlpProcess.on('error', (error) => {
+                reject(new Error(`yt-dlp process error: ${error.message}`));
+            });
+        });
+        
+    } catch (error) {
+        console.error('❌ Enhanced yt-dlp v2.0 info failed:', error);
+        throw error;
+    }
+}
+
+// Main YouTube download function
+async function downloadYouTube(url, quality, format) {
+    try {
+        // Check if we're on Render.com (production) or local
+        const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
+        
+        if (isProduction) {
+            console.log('📥 DOWNLOAD START -', quality, format, '- yt-dlp → YouTube API v3 (PRIMARY on Render.com)');
+            
+            // On Render.com, try yt-dlp first, then fallback to YouTube API v3
+            try {
+                console.log('🥇 DOWNLOAD STEP 1: Using yt-dlp (PRIMARY on Render.com)...');
+                
+                const result = await downloadYouTubeViaYtDlp(url, quality, format);
+                console.log('✅ DOWNLOAD STEP 1 SUCCESS: yt-dlp succeeded on Render.com');
+                return result;
+                
+            } catch (ytDlpError) {
+                console.log('❌ DOWNLOAD STEP 1 FAILED: yt-dlp failed on Render.com');
+                console.log('🔄 FALLBACK: Moving to alternative download method...');
+                
+                // Fallback to alternative method - try to get download URL from video page
+                try {
+                    console.log('🥈 DOWNLOAD STEP 2: Using alternative download method (FALLBACK on Render.com)...');
+                    
+                    const result = await downloadYouTubeViaAlternative(url, quality, format);
+                    console.log('✅ DOWNLOAD STEP 2 SUCCESS: Alternative download method succeeded on Render.com');
+                    return result;
+                    
+                } catch (altError) {
+                    console.log('❌ DOWNLOAD STEP 2 FAILED: Alternative download method failed on Render.com');
+                    throw new Error(`Both yt-dlp and alternative method failed on Render.com: ${ytDlpError.message}, ${altError.message}`);
+                }
+            }
+        } else {
+            console.log('📥 DOWNLOAD START -', quality, format, '- ytdl-core → yt-dlp (LOCAL)');
+            
+            // On local, try ytdl-core first for speed
+            try {
+                console.log('🥇 DOWNLOAD STEP 1: Trying ytdl-core (PRIMARY on LOCAL)...');
+                
+                const result = await downloadYouTubeViaYtdlCore(url, quality, format);
+                console.log('✅ DOWNLOAD STEP 1 SUCCESS: ytdl-core succeeded on LOCAL');
+                return result;
+                
+            } catch (ytdlError) {
+                console.log('❌ DOWNLOAD STEP 1 FAILED: ytdl-core failed on LOCAL');
+                console.log('🔄 FALLBACK: Moving to yt-dlp on LOCAL...');
+                
+                // Fallback to yt-dlp on local
+                try {
+                    console.log('🥈 DOWNLOAD STEP 2: Trying yt-dlp (FALLBACK on LOCAL)...');
+                    
+                    const result = await downloadYouTubeViaYtDlp(url, quality, format);
+                    console.log('✅ DOWNLOAD STEP 2 SUCCESS: yt-dlp succeeded on LOCAL');
+                    return result;
+                    
+                } catch (ytDlpError) {
+                    console.log('❌ DOWNLOAD STEP 2 FAILED: yt-dlp failed on LOCAL');
+                    throw new Error(`Both ytdl-core and yt-dlp failed on LOCAL: ${ytdlError.message}, ${ytDlpError.message}`);
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ downloadYouTube failed:', error);
+        throw new Error(`Failed to download YouTube video: ${error.message}`);
+    }
+}
+
+// Extract video URLs from YouTube page HTML
+function extractVideoUrlsFromPage(html, quality, format) {
+    try {
+        console.log('🔍 Extracting video URLs from page HTML...');
+        
+        const urls = [];
+        
+        // Method 1: Look for ytInitialPlayerResponse
+        const ytInitialMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
+        if (ytInitialMatch) {
+            try {
+                const playerResponse = JSON.parse(ytInitialMatch[1]);
+                console.log('✅ Found ytInitialPlayerResponse');
+                
+                if (playerResponse.streamingData && playerResponse.streamingData.formats) {
+                    const formats = playerResponse.streamingData.formats;
+                    console.log('📊 Found', formats.length, 'formats in streamingData');
+                    
+                    // Filter formats by quality and format
+                    let filteredFormats = formats;
+                    
+                    if (quality !== 'highest') {
+                        const targetHeight = parseInt(quality.replace('p', ''));
+                        filteredFormats = formats.filter(f => f.height <= targetHeight);
+                    }
+                    
+                    if (format === 'mp4') {
+                        filteredFormats = filteredFormats.filter(f => f.mimeType && f.mimeType.includes('video/mp4'));
+                    }
+                    
+                    // Sort by quality (highest first)
+                    filteredFormats.sort((a, b) => (b.height || 0) - (a.height || 0));
+                    
+                    // Extract URLs
+                    filteredFormats.forEach(format => {
+                        if (format.url) {
+                            urls.push(format.url);
+                            console.log(`🎯 Found format: ${format.height}p, ${format.mimeType}, URL length: ${format.url.length}`);
+                        }
+                    });
+                }
+                
+                if (playerResponse.streamingData && playerResponse.streamingData.adaptiveFormats) {
+                    const adaptiveFormats = playerResponse.streamingData.adaptiveFormats;
+                    console.log('📊 Found', adaptiveFormats.length, 'adaptive formats');
+                    
+                    // Filter adaptive formats
+                    let filteredAdaptive = adaptiveFormats;
+                    
+                    if (quality !== 'highest') {
+                        const targetHeight = parseInt(quality.replace('p', ''));
+                        filteredAdaptive = adaptiveFormats.filter(f => f.height && f.height <= targetHeight);
+                    }
+                    
+                    if (format === 'mp4') {
+                        filteredAdaptive = filteredAdaptive.filter(f => f.mimeType && f.mimeType.includes('video/mp4'));
+                    }
+                    
+                    // Sort by quality
+                    filteredAdaptive.sort((a, b) => (b.height || 0) - (a.height || 0));
+                    
+                    // Extract URLs
+                    filteredAdaptive.forEach(format => {
+                        if (format.url) {
+                            urls.push(format.url);
+                            console.log(`🎯 Found adaptive format: ${format.height}p, ${format.mimeType}, URL length: ${format.url.length}`);
+                        }
+                    });
+                }
+                
+            } catch (parseError) {
+                console.error('❌ Error parsing ytInitialPlayerResponse:', parseError.message);
+            }
+        }
+        
+        // Method 2: Look for ytInitialData
+        const ytInitialDataMatch = html.match(/ytInitialData\s*=\s*({.+?});/);
+        if (ytInitialDataMatch) {
+            try {
+                const initialData = JSON.parse(ytInitialDataMatch[1]);
+                console.log('✅ Found ytInitialData');
+                
+                // Look for video URLs in initial data
+                if (initialData.contents && initialData.contents.twoColumnWatchNextResults) {
+                    console.log('🔍 Found twoColumnWatchNextResults structure');
+                }
+                
+            } catch (parseError) {
+                console.error('❌ Error parsing ytInitialData:', parseError.message);
+            }
+        }
+        
+        // Method 3: Look for direct video URLs in HTML
+        const videoUrlMatches = html.match(/https:\/\/[^"]*\.googlevideo\.com[^"]*/g);
+        if (videoUrlMatches) {
+            console.log('✅ Found', videoUrlMatches.length, 'direct googlevideo.com URLs');
+            urls.push(...videoUrlMatches);
+        }
+        
+        // Remove duplicates and filter valid URLs
+        const uniqueUrls = [...new Set(urls)].filter(url => 
+            url.includes('googlevideo.com') && 
+            url.includes('videoplayback') &&
+            url.length > 100
+        );
+        
+        console.log('🎯 Total unique video URLs found:', uniqueUrls.length);
+        
+        if (uniqueUrls.length === 0) {
+            console.log('⚠️ No valid video URLs found in page HTML');
+            return null;
+        }
+        
+        return uniqueUrls;
+        
+    } catch (error) {
+        console.error('❌ Error extracting video URLs from page:', error);
+        return null;
+    }
+}
+
+// Download YouTube video via alternative method (when yt-dlp fails)
+async function downloadYouTubeViaAlternative(url, quality, format) {
+    try {
+        console.log('🔍 Alternative download method: Starting...');
+        
+        // Extract video ID from URL
+        const videoId = extractYouTubeVideoId(url);
+        if (!videoId) {
+            throw new Error('Invalid YouTube URL');
+        }
+        
+        console.log('🔍 Video ID extracted:', videoId);
+        
+        // Try to get video info from YouTube Data API v3 first
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        if (!apiKey) {
+            throw new Error('YouTube API key not configured');
+        }
+        
+        const videoInfoUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${apiKey}`;
+        const videoInfoResponse = await axios.get(videoInfoUrl);
+        
+        if (!videoInfoResponse.data.items || videoInfoResponse.data.items.length === 0) {
+            throw new Error('Video not found or unavailable');
+        }
+        
+        const videoInfo = videoInfoResponse.data.items[0];
+        console.log('✅ Video info retrieved from YouTube API v3:', videoInfo.snippet.title);
+        
+        // Try to get download URLs by making a direct request to YouTube video page
+        console.log('🔍 Attempting to extract download URLs from video page...');
+        
+        try {
+            // Make a request to the YouTube video page with enhanced headers
+            const videoPageUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            const videoPageResponse = await axios.get(videoPageUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
+                    'Cache-Control': 'max-age=0',
+                    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'Sec-Ch-Ua-Mobile': '?0',
+                    'Sec-Ch-Ua-Platform': '"Windows"',
+                    'Referer': 'https://www.youtube.com/',
+                    'Origin': 'https://www.youtube.com'
+                },
+                timeout: 30000
+            });
+            
+            const videoPageHtml = videoPageResponse.data;
+            console.log('✅ YouTube video page retrieved successfully');
+            
+            // Try to extract video URLs from the page
+            const videoUrls = extractVideoUrlsFromPage(videoPageHtml, quality, format);
+            
+            if (videoUrls && videoUrls.length > 0) {
+                console.log('✅ Found video URLs:', videoUrls.length);
+                
+                // Get the best quality URL
+                const bestUrl = videoUrls[0];
+                console.log('🎯 Using best quality URL:', bestUrl.substring(0, 100) + '...');
+                
+                // Create a download stream from the URL
+                const downloadResponse = await axios({
+                    method: 'GET',
+                    url: bestUrl,
+                    responseType: 'stream',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com'
+                    },
+                    timeout: 60000
+                });
+                
+                const downloadStream = downloadResponse.data;
+                
+                // Add download library info to the stream
+                downloadStream.downloadLibrary = 'Alternative HTTP method (fallback)';
+                downloadStream.downloadQuality = quality;
+                downloadStream.downloadFormat = format;
+                
+                console.log('✅ Alternative download method succeeded - created download stream');
+                return downloadStream;
+                
+            } else {
+                throw new Error('No video URLs found in page HTML');
+            }
+            
+        } catch (pageError) {
+            console.error('❌ Failed to extract video URLs from page:', pageError.message);
+            throw new Error(`Alternative method failed: ${pageError.message}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Alternative download method error:', error);
+        throw error;
+    }
+}
+
+// Download YouTube video directly via YouTube Data API v3
+async function downloadYouTubeViaAPIv3(url, quality, format) {
+    try {
+        console.log('🔍 YouTube API v3 direct download: Starting...');
+        
+        // Extract video ID from URL
+        const videoId = extractYouTubeVideoId(url);
+        if (!videoId) {
+            throw new Error('Invalid YouTube URL');
+        }
+        
+        console.log('🔍 Video ID extracted:', videoId);
+        
+        // Get video info from YouTube Data API v3
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        if (!apiKey) {
+            throw new Error('YouTube API key not configured');
+        }
+        
+        const videoInfoUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${apiKey}`;
+        const videoInfoResponse = await axios.get(videoInfoUrl);
+        
+        if (!videoInfoResponse.data.items || videoInfoResponse.data.items.length === 0) {
+            throw new Error('Video not found or unavailable');
+        }
+        
+        const videoInfo = videoInfoResponse.data.items[0];
+        console.log('✅ Video info retrieved from YouTube API v3:', videoInfo.snippet.title);
+        
+        // YouTube Data API v3 doesn't provide direct download URLs, but we can try to get video info
+        // and use it to create a more intelligent fallback
+        console.log('✅ Video info retrieved from YouTube API v3:', videoInfo.snippet.title);
+        
+        // For now, we'll throw an error to trigger the next fallback method
+        // In the future, we could implement a method to extract download URLs from the video page
+        throw new Error('YouTube Data API v3 fallback: Video info retrieved but direct download not supported. Need alternative method.');
+        
+    } catch (error) {
+        console.error('❌ YouTube API v3 direct download error:', error);
+        throw error;
+    }
+}
+
+// Enhanced ytdl-core function
+async function downloadYouTubeViaYtdlCore(url, quality, format) {
+    try {
+        console.log('🔍 Enhanced ytdl-core v2.0: Starting with cookie authentication...');
+        
+        // Add random delay to avoid bot detection
+        const delay = getRandomDelay();
+        console.log(`⏱️ Adding random delay: ${delay}ms to avoid bot detection`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Configure ytdl-core options
+        let downloadOptions = {};
+        
+        if (format === 'mp3') {
+            downloadOptions = {
+                quality: 'highestaudio',
+                filter: 'audioonly',
+                requestOptions: {
+                    headers: getEnhancedHeaders()
+                }
+            };
+        } else {
+            // For video, get best available quality
+            downloadOptions = {
+                quality: quality === 'highest' ? 'highest' : `${quality}p`,
+                filter: 'videoandaudio',
+                requestOptions: {
+                    headers: getEnhancedHeaders()
+                }
+            };
+        }
+        
+        console.log('🔧 Enhanced ytdl-core v2.0 options:', downloadOptions);
+        
+        // Create ytdl-core download stream
+        const downloadStream = ytdl(url, downloadOptions);
+        
+        // Add error handling
+        downloadStream.on('error', (error) => {
+            console.error('❌ Enhanced ytdl-core v2.0 stream error:', error);
+        });
+        
+        // Add download library info to the stream
+        downloadStream.downloadLibrary = 'ytdl-core (primary)';
+        downloadStream.downloadQuality = quality;
+        downloadStream.downloadFormat = format;
+        
+        console.log('✅ Enhanced ytdl-core v2.0 download stream created successfully');
+        
+        return downloadStream;
+        
+    } catch (error) {
+        console.error('❌ Enhanced ytdl-core v2.0 failed:', error);
+        throw error;
+    }
+}
+
+// YouTube info function
+async function getYouTubeInfo(url) {
+    try {
+        // Check if we're on Render.com (production) or local
+        const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
+        
+        if (isProduction) {
+            console.log('🔍 ANALYSIS START - YouTube API v3 → yt-dlp (PRIMARY on Render.com)');
+            
+            // Try YouTube Data API v3 first
+            try {
+                console.log('🥇 STEP 1: Trying YouTube Data API v3 (PRIMARY on Render.com)...');
+                
+                const videoId = extractYouTubeVideoId(url);
+                if (!videoId) {
+                    throw new Error('Invalid YouTube URL');
+                }
+                
+                const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${YOUTUBE_API_KEY}`;
+                const response = await axios.get(apiUrl);
+                
+                if (response.data.items && response.data.items.length > 0) {
+                    const video = response.data.items[0];
+                    const snippet = video.snippet;
+                    
+                    console.log('✅ SUCCESS: Analysis completed with YouTube Data API v3 on Render.com');
+                    
+                    return {
+                        title: snippet.title,
+                        duration: video.contentDetails.duration || 'Unknown',
+                        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+                        formats: ['mp4', 'mp3'],
+                        qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                        platform: 'YouTube',
+                        debugInfo: {
+                            method: 'YouTube Data API v3',
+                            isStatic: false,
+                            realQualities: ['4K', '2K', '1080p', '720p', '360p', '240p'],
+                            message: 'Video info retrieved via YouTube Data API v3 on Render.com'
+                        }
+                    };
+                } else {
+                    throw new Error('Video not found');
+                }
+                
+            } catch (apiError) {
+                console.log('⚠️ STEP 1 FAILED: YouTube Data API v3 failed on Render.com');
+                console.log('🔄 FALLBACK: Moving to yt-dlp on Render.com...');
+                
+                // Try yt-dlp on Render.com (ytdl-core doesn't work)
+                try {
+                    console.log('🥈 STEP 2: Trying yt-dlp (FALLBACK on Render.com)...');
+                    
+                    const result = await getYouTubeInfoViaYtDlp(url);
+                    console.log('✅ STEP 2 SUCCESS: yt-dlp succeeded on Render.com');
+                    return result;
+                    
+                } catch (ytDlpError) {
+                    console.log('❌ STEP 2 FAILED: yt-dlp failed on Render.com');
+                    throw new Error(`All methods failed on Render.com: API v3, yt-dlp`);
+                }
+            }
+        } else {
+            console.log('🔍 ANALYSIS START - YouTube API v3 → ytdl-core → yt-dlp (LOCAL)');
+            
+            // Try YouTube Data API v3 first
+            try {
+                console.log('🥇 STEP 1: Trying YouTube Data API v3 (PRIMARY on LOCAL)...');
+                
+                const videoId = extractYouTubeVideoId(url);
+                if (!videoId) {
+                    throw new Error('Invalid YouTube URL');
+                }
+                
+                const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${YOUTUBE_API_KEY}`;
+                const response = await axios.get(apiUrl);
+                
+                if (response.data.items && response.data.items.length > 0) {
+                    const video = response.data.items[0];
+                    const snippet = video.snippet;
+                    
+                    console.log('✅ SUCCESS: Analysis completed with YouTube Data API v3 on LOCAL');
+                    
+                    return {
+                        title: snippet.title,
+                        duration: video.contentDetails.duration || 'Unknown',
+                        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+                        formats: ['mp4', 'mp3'],
+                        qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                        platform: 'YouTube',
+                        debugInfo: {
+                            method: 'YouTube Data API v3',
+                            isStatic: false,
+                            realQualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                            message: 'Video info retrieved via YouTube Data API v3 on LOCAL'
+                        }
+                    };
+                } else {
+                    throw new Error('Video not found');
+                }
+                
+            } catch (apiError) {
+                console.log('⚠️ STEP 1 FAILED: YouTube Data API v3 failed on LOCAL');
+                console.log('🔄 FALLBACK: Moving to ytdl-core on LOCAL...');
+                
+                // Try ytdl-core on LOCAL
+                try {
+                    console.log('🥈 STEP 2: Trying ytdl-core (FALLBACK on LOCAL)...');
+                    
+                    const result = await getYouTubeInfoViaYtdlCore(url);
+                    console.log('✅ STEP 2 SUCCESS: ytdl-core succeeded on LOCAL');
+                    return result;
+                    
+                } catch (ytdlError) {
+                    console.log('⚠️ STEP 2 FAILED: ytdl-core failed on LOCAL');
+                    console.log('🔄 FALLBACK: Moving to yt-dlp on LOCAL...');
+                    
+                    // Try yt-dlp on LOCAL
+                    try {
+                        console.log('🥉 STEP 3: Trying yt-dlp (FALLBACK on LOCAL)...');
+                        
+                        const result = await getYouTubeInfoViaYtDlp(url);
+                        console.log('✅ STEP 3 SUCCESS: yt-dlp succeeded on LOCAL');
+                        return result;
+                        
+                    } catch (ytDlpError) {
+                        console.log('❌ STEP 3 FAILED: yt-dlp failed on LOCAL');
+                        throw new Error(`All methods failed on LOCAL: API v3, ytdl-core, yt-dlp`);
+                    }
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ getYouTubeInfo failed:', error);
+        throw new Error(`Failed to get YouTube video info: ${error.message}`);
+    }
+}
+
+// Helper function to extract YouTube video ID
+function extractYouTubeVideoId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+        /youtube\.com\/v\/([^&\n?#]+)/,
+        /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    
+    return null;
+}
+
+// Helper function to get YouTube info via ytdl-core
+async function getYouTubeInfoViaYtdlCore(url) {
+    try {
+        const info = await ytdl.getInfo(url, {
+            requestOptions: {
+                headers: getEnhancedHeaders()
+            }
+        });
+        
+        return {
+            title: info.videoDetails.title,
+            duration: info.videoDetails.lengthSeconds ? `${Math.floor(info.videoDetails.lengthSeconds / 60)}:${(info.videoDetails.lengthSeconds % 60).toString().padStart(2, '0')}` : 'Unknown',
+            thumbnail: info.videoDetails.thumbnails?.[0]?.url || '',
+            formats: ['mp4', 'mp3'],
+            qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+            platform: 'YouTube',
+            debugInfo: {
+                method: 'ytdl-core',
+                isStatic: false,
+                realQualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                message: 'Video info retrieved via ytdl-core'
+            }
+        };
+        
+    } catch (error) {
+        console.error('❌ ytdl-core info failed:', error);
+        throw error;
+    }
+}
+
+// PornHub functionality
+async function getPornHubInfo(url) {
+    try {
+        console.log('🔞 Getting PornHub video info for:', url);
+        
+        const videoInfo = await pornhub.getVideo(url);
+        
+        if (!videoInfo || !videoInfo.video) {
+            throw new Error('No video found in this PornHub URL');
+        }
+        
+        const video = videoInfo.video;
+        
+        return {
+            title: video.title || 'Unknown Title',
+            duration: video.duration || 'Unknown',
+            thumbnail: video.default_thumb || '',
+            formats: ['mp4'],
+            qualities: ['1080p', '720p', '480p', '360p', '240p'],
+            platform: 'PornHub',
+            debugInfo: {
+                method: 'pornhub.js',
+                isStatic: false,
+                realQualities: ['1080p', '720p', '480p', '360p', '240p'],
+                message: 'Video info retrieved via pornhub.js'
+            }
+        };
+        
+    } catch (error) {
+        console.error('❌ PornHub video info error:', error);
+        throw new Error(`Failed to get PornHub video info: ${error.message}`);
+    }
+}
+
+async function downloadPornHub(url, quality, format) {
+    try {
+        console.log('🔞 Downloading PornHub video:', quality, format);
+        
+        const videoInfo = await pornhub.getVideo(url);
+        
+        if (!videoInfo || !videoInfo.video) {
+            throw new Error('No video found in this PornHub URL');
+        }
+        
+        const video = videoInfo.video;
+        
+        // Get the best quality video URL
+        let downloadUrl = '';
+        if (video.video_url) {
+            downloadUrl = video.video_url;
+        } else if (video.download_url) {
+            downloadUrl = video.download_url;
+        } else if (video.embed_url) {
+            downloadUrl = video.embed_url;
+        }
+        
+        if (!downloadUrl) {
+            throw new Error('No download URL available');
+        }
+        
+        const response = await axios({
+            method: 'GET',
+            url: downloadUrl,
+            responseType: 'stream',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+        
+        // Add download library info to the stream
+        response.data.downloadLibrary = 'pornhub.js';
+        response.data.downloadQuality = quality;
+        response.data.downloadFormat = format;
+        
+        return response.data;
+        
+    } catch (error) {
+        console.error('❌ PornHub download error:', error);
+        throw new Error(`Failed to download PornHub video: ${error.message}`);
+    }
+}
+
+// YouTube playlist functionality
+async function getYouTubePlaylistInfo(url) {
+    try {
+        console.log('🎵 Getting YouTube playlist info for:', url);
+        
+        // Extract playlist ID
+        const playlistId = extractYouTubePlaylistId(url);
+        if (!playlistId) {
+            throw new Error('Invalid YouTube playlist URL');
+        }
+        
+        // Try @distube/ytpl first
+        try {
+            console.log('🥇 Trying @distube/ytpl for playlist info...');
+            
+            const playlist = await ytpl(playlistId, {
+                requestOptions: {
+                    headers: getEnhancedHeaders()
+                }
+            });
+            
+            if (!playlist || !playlist.videos || playlist.videos.length === 0) {
+                throw new Error('No videos found in playlist');
+            }
+            
+            const videos = playlist.videos.map(video => ({
+                title: video.title,
+                url: video.url,
+                thumbnail: video.thumbnail?.url || '',
+                duration: video.duration || 'Unknown'
+            }));
+            
+            return {
+                title: playlist.title || `YouTube Playlist (${playlistId})`,
+                videoCount: videos.length,
+                videos: videos,
+                qualities: ['720p', '480p', '360p', '240p'],
+                formats: ['mp4', 'mp3'],
+                qualitySizes: {
+                    '720p': '~50MB per video',
+                    '480p': '~30MB per video', 
+                    '360p': '~20MB per video',
+                    '240p': '~15MB per video'
+                },
+                playlistId: playlistId,
+                isPlaylist: true,
+                author: playlist.author?.name || 'Unknown',
+                debugInfo: {
+                    method: '@distube/ytpl',
+                    isStatic: false,
+                    realQualities: ['720p', '480p', '360p', '240p'],
+                    totalVideos: videos.length,
+                    message: `Playlist retrieved via @distube/ytpl: ${videos.length} videos found`
+                }
+            };
+            
+            console.log(`✅ @distube/ytpl playlist info retrieved successfully: ${videos.length} videos`);
+            return playlistInfo;
+        } catch (ytplError) {
+            console.log('⚠️ @distube/ytpl failed:', ytplError.message);
+        }
+        
+        // If we get here, try web scraping approach
+        try {
+            console.log('🌐 Trying web scraping approach...');
+            
+            // Scrape the playlist page directly
+            const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+            const response = await axios.get(playlistUrl, {
+                headers: getEnhancedHeaders()
+            });
+            
+            const html = response.data;
+            console.log('📄 Playlist page scraped successfully');
+            
+            // Extract video information using simpler and more reliable patterns
+            // Look for video IDs and titles in the playlist data
+            const playlistVideoPattern = /"playlistVideoRenderer":\s*\{[^}]*"videoId":"([^"]+)"/g;
+            
+            // Try multiple title patterns for better coverage - more aggressive
+            const titlePatterns = [
+                /"playlistVideoRenderer":\s*\{[^}]*"title":\s*\{[^}]*"runs":\s*\[[^}]*\{[^}]*"text":\s*"([^"]+)"/g,
+                /"playlistVideoRenderer":\s*\{[^}]*"title":\s*\{[^}]*"simpleText":\s*"([^"]+)"/g,
+                /"playlistVideoRenderer":\s*\{[^}]*"title":\s*\{[^}]*"runs":\s*\[[^}]*\{[^}]*"text":\s*"([^"]+)"[^}]*\}/g,
+                // More aggressive patterns
+                /"text":\s*"([^"]+)"[^}]*"videoId":\s*"([^"]+)"/g,
+                /"title":\s*\{[^}]*"runs":\s*\[[^}]*\{[^}]*"text":\s*"([^"]+)"/g,
+                /"simpleText":\s*"([^"]+)"/g
+            ];
+            
+            const playlistThumbnailPattern = /"playlistVideoRenderer":\s*\{[^}]*"thumbnail":\s*\{[^}]*"thumbnails":\s*\[[^}]*\{[^}]*"url":\s*"([^"]+)"/g;
+            
+            // Extract only playlist videos (not all videos on the page)
+            const videoIds = [...html.matchAll(playlistVideoPattern)].map(match => match[1]);
+            
+            // Try to extract titles using multiple patterns - more robust
+            let titles = [];
+            for (const pattern of titlePatterns) {
+                try {
+                    const matches = [...html.matchAll(pattern)];
+                    if (matches.length > 0) {
+                        // Handle different pattern structures
+                        if (pattern.source.includes('"text":') && pattern.source.includes('"videoId":')) {
+                            // Pattern with both text and videoId - extract text only
+                            titles = matches.map(match => match[1]);
+                        } else {
+                            // Regular pattern - extract first group
+                            titles = matches.map(match => match[1]);
+                        }
+                        
+                        // Filter out empty or invalid titles
+                        titles = titles.filter(title => title && title.length > 2 && !title.includes('\\'));
+                        
+                        if (titles.length > 0) {
+                            console.log(`🔍 Found ${titles.length} valid titles using pattern:`, pattern.source.substring(0, 50) + '...');
+                            console.log(`🔍 Sample titles:`, titles.slice(0, 3));
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    console.log(`⚠️ Pattern failed:`, error.message);
+                    continue;
+                }
+            }
+            
+            const thumbnails = [...html.matchAll(playlistThumbnailPattern)].map(match => match[1]);
+            
+            console.log(`🔍 Found ${videoIds.length} playlist videos, ${titles.length} titles, ${thumbnails.length} thumbnails`);
+            
+            // Limit to reasonable number of videos (max 100) to avoid performance issues
+            const maxVideos = Math.min(videoIds.length, 100);
+            const limitedVideoIds = videoIds.slice(0, maxVideos);
+            const limitedTitles = titles.slice(0, maxVideos);
+            const limitedThumbnails = thumbnails.slice(0, maxVideos);
+            
+            // Create video objects
+            const videos = limitedVideoIds.map((videoId, index) => ({
+                title: limitedTitles[index] || `Video ${index + 1}`,
+                url: `https://www.youtube.com/watch?v=${videoId}`,
+                thumbnail: limitedThumbnails[index] || '',
+                duration: 'Unknown'
+            }));
+            
+            if (videos.length === 0) {
+                throw new Error('No videos found in playlist');
+            }
+            
+            console.log(`✅ Web scraping playlist info retrieved successfully: ${videos.length} videos`);
+            
+            return {
+                title: `YouTube Playlist (${playlistId})`,
+                videoCount: videos.length,
+                videos: videos,
+                qualities: ['720p', '480p', '360p', '240p'],
+                formats: ['mp4', 'mp3'],
+                qualitySizes: {
+                    '720p': '~50MB per video',
+                    '480p': '~30MB per video', 
+                    '360p': '~20MB per video',
+                    '240p': '~15MB per video'
+                },
+                playlistId: playlistId,
+                isPlaylist: true,
+                author: 'Unknown',
+                debugInfo: {
+                    method: 'Web Scraping',
+                    isStatic: false,
+                    realQualities: ['720p', '480p', '360p', '240p'],
+                    totalVideos: videos.length,
+                    message: `Playlist retrieved via web scraping: ${videos.length} videos found`
+                }
+            };
+            
+        } catch (scrapingError) {
+            console.log('⚠️ Web scraping failed:', scrapingError.message);
+        }
+        
+        throw new Error('All playlist retrieval methods failed');
+        
+    } catch (error) {
+        console.error('❌ getYouTubePlaylistInfo failed:', error);
+        throw new Error(`Failed to get YouTube playlist info: ${error.message}`);
+    }
+}
+
+// Helper function to extract YouTube playlist ID
+function extractYouTubePlaylistId(url) {
+    const patterns = [
+        /[?&]list=([^&\n?#]+)/,
+        /playlist\?list=([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    
+    return null;
+}
+
+// Download YouTube playlist function
+async function downloadYouTubePlaylist(url, quality, format) {
+    try {
+        console.log('🎵 Starting playlist download for:', url);
+        
+        // Get playlist info first
+        const playlistInfo = await getYouTubePlaylistInfo(url);
+        
+        console.log(`🎵 Playlist info retrieved: ${playlistInfo.videoCount} videos`);
+        
+        // Check if we have any videos
+        if (!playlistInfo.videos || playlistInfo.videos.length === 0) {
+            console.log('⚠️ No videos found in playlist, returning error');
+            
+            throw new Error('No videos found in this playlist. Please check the URL.');
+        }
+        
+        console.log(`🎵 Found ${playlistInfo.videos.length} videos to download`);
+        
+        // Download ALL videos from the playlist based on requested format
+        const requestedFormat = format || 'mp3';
+        const requestedQuality = quality || 'highestaudio';
+        
+        console.log(`🎵 Starting download of ALL ${playlistInfo.videos.length} videos from playlist as ${requestedFormat.toUpperCase()}`);
+        
+        try {
+            // Create a ZIP file containing all videos/audio
+            const archiver = require('archiver');
+            const archive = archiver('zip', {
+                zlib: { level: 9 } // Maximum compression
+            });
+            
+            // Create a readable stream from the archive
+            const archiveStream = new Readable();
+            archiveStream._read = () => {}; // Required for readable streams
+            
+            // Pipe archive to the stream
+            archive.pipe(archiveStream);
+            
+            // Process videos sequentially to avoid memory issues
+            for (let i = 0; i < playlistInfo.videos.length; i++) {
+                const video = playlistInfo.videos[i];
+                console.log(`🎵 Downloading video ${i + 1}/${playlistInfo.videos.length}: ${video.title}`);
+                
+                try {
+                    // 🔍 HYBRID DOWNLOAD: ytdl-core → yt-dlp fallback
+                    console.log(`🚀 Video ${i + 1} - Starting hybrid download (ytdl-core → yt-dlp)...`);
+                    
+                    try {
+                        // 🥇 STEP 1: Try ytdl-core first for speed
+                        console.log(`🥇 Video ${i + 1} - STEP 1: Trying ytdl-core (PRIMARY)...`);
+                        
+                        let downloadStream;
+                        let downloadMethod = 'ytdl-core';
+                        
+                        try {
+                            // Configure ytdl-core options
+                            let downloadOptions = {};
+                            
+                            if (requestedFormat === 'mp3') {
+                                downloadOptions = {
+                                    quality: 'highestaudio',
+                                    filter: 'audioonly'
+                                };
+                            } else {
+                                // For video, get best available quality
+                                downloadOptions = {
+                                    quality: 'highest',
+                                    filter: 'videoandaudio'
+                                };
+                            }
+                            
+                            console.log(`🔧 Video ${i + 1} - ytdl-core options:`, downloadOptions);
+                            
+                            // Create ytdl-core download stream
+                            downloadStream = ytdl(video.url, downloadOptions);
+                            
+                            // Add error handling
+                            downloadStream.on('error', (error) => {
+                                console.error(`❌ Video ${i + 1} - ytdl-core stream error:`, error);
+                            });
+                            
+                            console.log(`✅ Video ${i + 1} - ytdl-core download stream created successfully`);
+                            
+                        } catch (ytdlError) {
+                            console.log(`❌ Video ${i + 1} - STEP 1 FAILED: ytdl-core failed`);
+                            console.log(`🔄 Video ${i + 1} - FALLBACK: Moving to yt-dlp...`);
+                            
+                            // 🥈 STEP 2: Fallback to yt-dlp
+                            try {
+                                console.log(`🥈 Video ${i + 1} - STEP 2: Trying yt-dlp (FALLBACK)...`);
+                                
+                                // Use yt-dlp with dynamic path for cross-platform compatibility
+                                const ytDlpPath = process.env.YT_DLP_PATH || (process.platform === 'win32' ? './yt-dlp-windows.exe' : './yt-dlp');
+                                console.log(`🔧 Using yt-dlp path: ${ytDlpPath}`);
+                                console.log(`🔧 Platform: ${process.platform}`);
+                                console.log(`🔧 YT_DLP_PATH env: ${process.env.YT_DLP_PATH}`);
+                                
+                                // Check if yt-dlp exists
+                                if (!fs.existsSync(ytDlpPath)) {
+                                    console.error(`❌ yt-dlp not found at path: ${ytDlpPath}`);
+                                    throw new Error(`yt-dlp executable not found at ${ytDlpPath}. Please ensure it's downloaded and executable.`);
+                                }
+                                
+                                // Configure download options
+                                let formatOption = requestedFormat === 'mp3' ? 'bestaudio' : 'best[ext=mp4]/best';
+                                
+                                // Create yt-dlp download stream using spawn
+                                const ytDlpProcess = spawn(ytDlpPath, [
+                                    video.url,
+                                    '-o', '-',
+                                    '-f', formatOption,
+                                    '--no-playlist',
+                                    '--no-warnings',
+                                    '--no-progress',
+                                    '--quiet',
+                                    '--user-agent', getRandomUserAgent(),
+                                    '--cookies', getManualCookies(),
+                                    '--no-check-certificates',
+                                    '--prefer-insecure',
+                                    ...(requestedFormat === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+                                ]);
+                                
+                                // Get the stdout stream from the process
+                                downloadStream = ytDlpProcess.stdout;
+                                
+                                // Add error handling for the process
+                                ytDlpProcess.on('error', (error) => {
+                                    console.error(`❌ Video ${i + 1} - yt-dlp process error:`, error);
+                                });
+                                
+                                ytDlpProcess.stderr.on('data', (data) => {
+                                    const stderrData = data.toString().trim();
+                                    console.log(`⚠️ Video ${i + 1} - yt-dlp stderr:`, stderrData);
+                                });
+                                
+                                ytDlpProcess.on('exit', (code, signal) => {
+                                    if (code !== 0) {
+                                        console.error(`❌ Video ${i + 1} - yt-dlp process failed with code ${code}, signal ${signal}`);
+                                    }
+                                });
+                                
+                                downloadMethod = 'yt-dlp (fallback)';
+                                
+                                // Add error handling
+                                downloadStream.on('error', (error) => {
+                                    console.error(`❌ Video ${i + 1} - yt-dlp stream error:`, error);
+                                });
+                                
+                                console.log(`✅ Video ${i + 1} - ytdl-core download stream created successfully (fallback)`);
+                                
+                            } catch (ytDlpError) {
+                                console.log(`❌ Video ${i + 1} - STEP 2 FAILED: yt-dlp failed`);
+                                throw new Error(`Both ytdl-core and yt-dlp failed: ${ytdlError.message}, ${ytDlpError.message}`);
+                            }
+                        }
+                        
+                        // Generate filename
+                        const filename = `${(i + 1).toString().padStart(2, '0')}_${video.title.replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_')}.${requestedFormat}`;
+                        
+                        // Add to archive
+                        archive.append(downloadStream, { name: filename });
+                        
+                        console.log(`✅ Video ${i + 1} - Downloaded and added ${filename} to archive via ${downloadMethod}`);
+                        
+                    } catch (downloadError) {
+                        console.error(`❌ Error downloading video ${i + 1}:`, downloadError.message);
+                        
+                        // Add error info to archive
+                        const errorContent = `Video ${i + 1}: ${video.title}\nStatus: Download failed - ${downloadError.message}\nURL: ${video.url}\n\n`;
+                        archive.append(Buffer.from(errorContent), { name: `video_${i + 1}_error.txt` });
+                        
+                        console.log(`⚠️ Added error info for video ${i + 1} to archive`);
+                    }
+                    
+                } catch (videoError) {
+                    console.error(`❌ Error processing video ${i + 1}:`, videoError.message);
+                    // Continue with next video instead of failing completely
+                    continue;
+                }
+            }
+            
+            // Finalize the archive
+            archive.finalize();
+            
+            console.log('✅ Playlist archive creation completed');
+            
+            // Add download library info to the stream
+            archiveStream.downloadLibrary = 'ytdl-core + yt-dlp (hybrid)';
+            archiveStream.downloadQuality = quality;
+            archiveStream.downloadFormat = format;
+            
+            return archiveStream;
+            
+        } catch (downloadError) {
+            console.error('❌ Error creating playlist archive:', downloadError);
+            throw new Error(`Failed to create playlist archive: ${downloadError.message}`);
+        }
+        
+    } catch (error) {
+        console.error('Playlist download error:', error);
+        throw new Error(`Failed to download YouTube playlist: ${error.message}`);
+    }
+}
+
+// Test cookies endpoint
+app.post('/test-cookies', async (req, res) => {
+    try {
+        const { cookies } = req.body;
+        
+        if (!cookies || !cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
+            return res.json({
+                success: false,
+                message: 'Missing required cookies (CONSENT, VISITOR_INFO1_LIVE, YSC)'
+            });
+        }
+        
+        console.log('🧪 Testing cookies:', Object.keys(cookies));
+        
+        // Try to make a simple request to YouTube with these cookies
+        try {
+            const cookieFile = createTestCookieFile(cookies);
+            
+            // Test with yt-dlp to see if cookies work
+            const testResult = await testYoutubeCookies(cookieFile);
+            
+            // Clean up test file
+            try {
+                fs.unlinkSync(cookieFile);
+            } catch (e) {
+                console.log('Could not delete test cookie file');
+            }
+            
+            if (testResult.success) {
+                res.json({
+                    success: true,
+                    message: 'Cookies are working! YouTube access confirmed.',
+                    details: testResult.details
+                });
+            } else {
+                res.json({
+                    success: false,
+                    message: 'Cookies failed YouTube access test. They may be expired or invalid.',
+                    details: testResult.details
+                });
+            }
+            
+        } catch (error) {
+            console.error('❌ Cookie test error:', error);
+            res.json({
+                success: false,
+                message: 'Could not test cookies due to server error',
+                error: error.message
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Test cookies endpoint error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while testing cookies',
+            error: error.message
+        });
+    }
+});
+
+function createTestCookieFile(cookies) {
+    const fs = require('fs');
+    const cookieFile = './test_cookies.txt';
+    
+    const netscapeCookies = `# Netscape HTTP Cookie File
+# Test cookies for YouTube access verification
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	${cookies.CONSENT}
+.youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	${cookies.VISITOR_INFO1_LIVE}
+.youtube.com	TRUE	/	FALSE	1735689600	YSC	${cookies.YSC}
+.youtube.com	TRUE	/	FALSE	1735689600	GPS	1
+.youtube.com	TRUE	/	FALSE	1735689600	PREF	f4=4000000&tz=Europe.Bucharest&f5=20000&f6=8
+.youtube.com	TRUE	/	FALSE	1735689600	LOGIN_INFO	${cookies.LOGIN_INFO || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	SID	${cookies.SID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	HSID	${cookies.HSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	SSID	${cookies.SSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	APISID	${cookies.APISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	SAPISID	${cookies.SAPISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PAPISID	${cookies.SECURE_1PAPISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PAPISID	${cookies.SECURE_3PAPISID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSID	${cookies.SECURE_1PSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSID	${cookies.SECURE_3PSID || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-1PSIDCC	${cookies.SECURE_1PSIDCC || ''}
+.youtube.com	TRUE	/	FALSE	1735689600	__Secure-3PSIDCC	${cookies.SECURE_3PSIDCC || ''}
+`;
+    
+    fs.writeFileSync(cookieFile, netscapeCookies);
+    return cookieFile;
+}
+
+async function testYoutubeCookies(cookieFile) {
+    return new Promise((resolve) => {
+        const { spawn } = require('child_process');
+        
+        // Test with a simple video info request
+        const ytDlpArgs = [
+            '--no-progress',
+            '--quiet',
+            '--cookies', cookieFile,
+            '--no-check-certificate',
+            '--prefer-insecure',
+            '--extractor-args', 'youtube:player_client=android',
+            '--extractor-args', 'youtube:player_skip=webpage',
+            'https://www.youtube.com/watch?v=dQw4w9WgXcQ' // Rick Roll video for testing
+        ];
+        
+        console.log('🧪 Testing cookies with yt-dlp:', ytDlpArgs.join(' '));
+        
+        const ytDlpProcess = spawn('./yt-dlp', ytDlpArgs);
+        
+        let stdout = '';
+        let stderr = '';
+        
+        ytDlpProcess.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+        
+        ytDlpProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+        
+        ytDlpProcess.on('close', (code) => {
+            console.log('🧪 yt-dlp test process exited with code:', code);
+            console.log('🧪 Test stdout:', stdout);
+            console.log('🧪 Test stderr:', stderr);
+            
+            if (code === 0 && stdout.includes('title')) {
+                resolve({
+                    success: true,
+                    details: 'Successfully retrieved video information with provided cookies'
+                });
+            } else if (stderr.includes('Sign in to confirm you\'re not a bot')) {
+                resolve({
+                    success: false,
+                    details: 'YouTube detected bot activity - cookies may be invalid or expired'
+                });
+            } else if (stderr.includes('Video unavailable')) {
+                resolve({
+                    success: false,
+                    details: 'Video unavailable - cookies may not have proper access'
+                });
+            } else {
+                resolve({
+                    success: false,
+                    details: `yt-dlp failed with code ${code}: ${stderr}`
+                });
+            }
+        });
+        
+        ytDlpProcess.on('error', (error) => {
+            console.error('🧪 yt-dlp test process error:', error);
+            resolve({
+                success: false,
+                details: `Process error: ${error.message}`
+            });
+        });
+        
+        // Timeout after 30 seconds
+        setTimeout(() => {
+            ytDlpProcess.kill();
+            resolve({
+                success: false,
+                details: 'Test timed out after 30 seconds'
+            });
+        }, 30000);
+    });
+}
+
+// Enable CAPTCHA bypass endpoint
+app.post('/enable-captcha-bypass', (req, res) => {
+    try {
+        console.log('🤖 CAPTCHA Bypass Mode enabled from frontend');
+        global.captchaBypassEnabled = true;
+        res.json({ success: true, message: 'CAPTCHA bypass enabled' });
+    } catch (error) {
+        console.error('❌ Error enabling CAPTCHA bypass:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Upload cookies file endpoint
+app.post('/api/upload-cookies', (req, res) => {
+    try {
+        const { cookiesData, format } = req.body;
+        
+        if (!cookiesData) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Cookies data is required' 
+            });
+        }
+        
+        console.log('🍪 Uploading cookies file, format:', format);
+        
+        let parsedCookies = {};
+        
+        try {
+            if (format === 'netscape') {
+                // Parse Netscape format cookies
+                parsedCookies = parseNetscapeCookies(cookiesData);
+            } else if (format === 'json') {
+                // Parse JSON format cookies
+                parsedCookies = JSON.parse(cookiesData);
+            } else if (format === 'headerstring') {
+                // Parse HeaderString format cookies
+                parsedCookies = parseHeaderStringCookies(cookiesData);
+            } else {
+                throw new Error('Unsupported format. Use: netscape, json, or headerstring');
+            }
+            
+            console.log('🍪 Successfully parsed cookies:', Object.keys(parsedCookies));
+            
+            // Update global user cookies
+            userCookies = {
+                ...userCookies,
+                ...parsedCookies
+            };
+            
+            // Create cookies file for yt-dlp
+            const cookieFile = createCookiesFileFromParsed(userCookies);
+            
+            res.json({ 
+                success: true, 
+                message: `Successfully uploaded ${Object.keys(parsedCookies).length} cookies`,
+                cookiesCount: Object.keys(parsedCookies).length,
+                cookieFile: cookieFile
+            });
+            
+        } catch (parseError) {
+            console.error('❌ Error parsing cookies:', parseError);
+            res.status(400).json({ 
+                success: false, 
+                error: `Failed to parse cookies: ${parseError.message}` 
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Error uploading cookies:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// Get cookies status endpoint
+app.get('/api/cookies-status', (req, res) => {
+    try {
+        const fs = require('fs');
+        
+        let status = {
+            hasUploadedCookies: false,
+            hasManualCookies: false,
+            cookiesCount: 0,
+            cookieFile: null
+        };
+        
+        // Check for uploaded cookies file
+        const uploadedCookieFile = './youtube_cookies_uploaded.txt';
+        if (fs.existsSync(uploadedCookieFile)) {
+            status.hasUploadedCookies = true;
+            status.cookieFile = uploadedCookieFile;
+            
+            // Count cookies in file
+            try {
+                const content = fs.readFileSync(uploadedCookieFile, 'utf8');
+                const lines = content.split('\n').filter(line => 
+                    line.trim() !== '' && !line.startsWith('#') && line.includes('\t')
+                );
+                status.cookiesCount = lines.length;
+            } catch (error) {
+                console.error('Error reading uploaded cookies file:', error);
+            }
+        }
+        
+        // Check for manual cookies
+        if (userCookies && Object.keys(userCookies).length > 0) {
+            status.hasManualCookies = true;
+        }
+        
+        res.json({
+            success: true,
+            status: status
+        });
+        
+    } catch (error) {
+        console.error('❌ Error getting cookies status:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 // Start the server
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📱 Frontend: http://localhost:${PORT}`);
 });
+

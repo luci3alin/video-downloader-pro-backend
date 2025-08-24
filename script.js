@@ -1,15 +1,21 @@
 // Video Downloader Pro - Main JavaScript File
 
 class VideoDownloader {
-    constructor() {
+        constructor() {
         this.initializeEventListeners();
         this.currentUrl = '';
         this.downloadProgress = 0;
-        
+
+        // Check if cookies permission was already granted
+        this.cookiesPermissionGranted = localStorage.getItem('cookiesPermission') === 'granted';
+
         // Initialize platform attributes after DOM is loaded
         setTimeout(() => {
             this.initializePlatformAttributes();
         }, 100);
+        
+        // Initialize cookies section
+        this.initializeCookiesSection();
     }
 
     initializeEventListeners() {
@@ -857,8 +863,46 @@ class VideoDownloader {
             console.log('🎯 Quality downloaded:', downloadQuality);
             console.log('📁 Format downloaded:', downloadFormat);
             
-            // Create download link
-            const blob = await response.blob();
+            // Show download method info to user
+            if (downloadLibrary !== 'unknown') {
+                console.log(`🎯 Download completed using: ${downloadLibrary}`);
+                console.log(`🎯 Quality: ${downloadQuality}, Format: ${downloadFormat}`);
+                
+                // Update progress message to show which method was used
+                this.updateDownloadProgress(50, `Downloading via ${downloadLibrary}...`);
+            }
+            
+            // Create download link with real-time progress tracking
+            console.log('💾 Starting blob creation with progress tracking...');
+            
+            // Track download progress in real-time
+            const reader = response.body.getReader();
+            const contentLength = response.headers.get('content-length');
+            const totalSize = contentLength ? parseInt(contentLength) : 0;
+            let downloadedSize = 0;
+            const chunks = [];
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) break;
+                
+                chunks.push(value);
+                downloadedSize += value.length;
+                
+                // Calculate progress percentage
+                if (totalSize > 0) {
+                    const progress = Math.min(95, Math.round((downloadedSize / totalSize) * 100));
+                    this.updateDownloadProgress(progress, `Downloading... ${(downloadedSize / (1024 * 1024)).toFixed(2)} MB`);
+                } else {
+                    // If we don't know total size, estimate progress based on downloaded data
+                    const estimatedProgress = Math.min(95, Math.round((downloadedSize / (1024 * 1024)) * 10)); // Rough estimate
+                    this.updateDownloadProgress(estimatedProgress, `Downloading... ${(downloadedSize / (1024 * 1024)).toFixed(2)} MB`);
+                }
+            }
+            
+            // Create blob from chunks
+            const blob = new Blob(chunks);
             console.log('💾 Blob size:', (blob.size / (1024 * 1024)).toFixed(2) + ' MB');
             console.log('💾 Blob type:', blob.type);
             
@@ -1370,6 +1414,484 @@ class VideoDownloader {
         this.removePornHubPlatform();
     }
     
+    // Cookies Modal Functions
+    initializeCookiesSection() {
+        // Check if cookies permission is granted
+        if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
+            // Show cookies section immediately
+            this.showCookiesSection();
+        }
+        
+        // Initialize cookie section events
+        this.initializeCookieSectionEvents();
+    }
+    
+    initializeCookieSectionEvents() {
+        console.log('🔍 Initializing cookies section events...');
+        
+        // Find all cookie-related buttons
+        const saveBtn = document.getElementById('saveCookiesBtn');
+        const testBtn = document.getElementById('testCookiesBtn');
+        const noCookiesBtn = document.getElementById('noCookiesModeBtn');
+        const skipBtn = document.getElementById('skipCookiesBtn');
+        const resetBtn = document.getElementById('resetCookiesBtn');
+        const acceptBtn = document.getElementById('acceptCookiesBtn');
+        
+        console.log('🔍 Save button found:', !!saveBtn);
+        console.log('🔍 Test button found:', !!testBtn);
+        console.log('🔍 No cookies button found:', !!noCookiesBtn);
+        console.log('🔍 Skip button found:', !!skipBtn);
+        console.log('🔍 Reset button found:', !!resetBtn);
+        console.log('🔍 Accept button found:', !!acceptBtn);
+        
+        // Add event listeners
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveAndUseCookies());
+        }
+        
+        if (testBtn) {
+            testBtn.addEventListener('click', () => this.testCookies());
+        }
+        
+        if (noCookiesBtn) {
+            noCookiesBtn.addEventListener('click', () => this.enableCaptchaBypassMode());
+        }
+        
+        if (skipBtn) {
+            skipBtn.addEventListener('click', () => this.skipCookiesPermission());
+        }
+        
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.resetCookies());
+        }
+        
+        if (acceptBtn) {
+            acceptBtn.addEventListener('click', () => this.saveCookiesPermission());
+        }
+        
+        console.log('🔍 All cookie section events initialized');
+    }
+    
+    showCookiesSection() {
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            // Force display with !important equivalent
+            cookiesSection.style.setProperty('display', 'block', 'important');
+            cookiesSection.style.setProperty('opacity', '1', 'important');
+            cookiesSection.style.setProperty('visibility', 'visible', 'important');
+            cookiesSection.style.setProperty('z-index', '10000', 'important');
+            cookiesSection.classList.add('show');
+            console.log('🔍 Cookies section displayed with forced visibility');
+        } else {
+            console.error('❌ Cookies section not found!');
+        }
+    }
+    
+    hideCookiesSection() {
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            // Force hide with !important equivalent
+            cookiesSection.style.setProperty('display', 'none', 'important');
+            cookiesSection.style.setProperty('opacity', '0', 'important');
+            cookiesSection.style.setProperty('visibility', 'hidden', 'important');
+            cookiesSection.classList.remove('show');
+            console.log('🔍 Cookies section hidden with forced hiding');
+        }
+    }
+    
+    saveCookiesPermission() {
+        localStorage.setItem('cookiesPermission', 'granted');
+        this.cookiesPermissionGranted = true;
+        this.showCookiesSuccess();
+        // Don't hide cookies section automatically - let user close it manually
+        // this.hideCookiesSection();
+    }
+    
+    saveAndUseCookies() {
+        const cookiesInput = document.getElementById('cookiesInput');
+        if (cookiesInput && cookiesInput.value.trim()) {
+            const cookies = cookiesInput.value.trim();
+            localStorage.setItem('youtubeCookies', cookies);
+            this.showCookiesSuccess();
+            // Don't hide cookies section automatically - let user close it manually
+            // this.hideCookiesSection();
+        } else {
+            alert('Please enter your YouTube cookies');
+        }
+    }
+    
+    skipCookiesPermission() {
+        localStorage.setItem('cookiesPermission', 'skipped');
+        this.cookiesPermissionGranted = true;
+        this.showCookiesSuccess();
+        // Don't hide cookies section automatically - let user close it manually
+        // this.hideCookiesSection();
+    }
+    
+    enableCaptchaBypassMode() {
+        console.log('🤖 Enabling CAPTCHA Bypass Mode...');
+        
+        // Enable CAPTCHA bypass on server
+        fetch('/enable-captcha-bypass', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ CAPTCHA bypass enabled on server');
+                this.showCookiesSuccess();
+                // Don't hide cookies section automatically - let user close it manually
+                // this.hideCookiesSection();
+            }
+        })
+        .catch(error => {
+            console.error('❌ Failed to enable CAPTCHA bypass:', error);
+        });
+    }
+    
+    testCookies() {
+        console.log('🧪 Testing current cookies...');
+        const cookies = localStorage.getItem('youtubeCookies');
+        if (cookies) {
+            alert('Cookies found and stored. You can now download YouTube videos.');
+        } else {
+            alert('No cookies found. Please enter your YouTube cookies or use CAPTCHA bypass mode.');
+        }
+    }
+    
+    resetCookies() {
+        localStorage.removeItem('youtubeCookies');
+        localStorage.removeItem('cookiesPermission');
+        this.cookiesPermissionGranted = false;
+        this.showCookiesSection();
+    }
+    
+    showCookiesSuccess() {
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            cookiesSection.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 3rem; color: #4caf50; margin-bottom: 15px;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3 style="color: #2e7d32; margin-bottom: 10px;">Cookies Set Successfully!</h3>
+                    <p style="color: #2e7d32; margin-bottom: 20px;">You can now download YouTube videos.</p>
+                    <button onclick="videoDownloader.hideCookiesSection()" style="
+                        background: linear-gradient(45deg, #4caf50, #45a049);
+                        color: white;
+                        border: none;
+                        padding: 12px 25px;
+                        border-radius: 10px;
+                        font-size: 1rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    ">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            `;
+        }
+    }
+    
+    showCookieInstructions() {
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            const instructions = `
+                <div class="cookie-instructions">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>🔍 How to get YouTube cookies:</h3>
+                        <button onclick="videoDownloader.hideCookiesSection()" style="
+                            background: #ff4757;
+                            color: white;
+                            border: none;
+                            padding: 8px 15px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 0.9rem;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.background='#ff3742'" onmouseout="this.style.background='#ff4757'">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 15px;">📋 Step-by-step instructions:</h4>
+                        
+                        <ol style="color: #34495e; line-height: 1.8; text-align: left;">
+                            <li><strong>Go to YouTube</strong> and sign in to your account</li>
+                            <li><strong>Open Developer Tools</strong> (F12 or right-click → Inspect)</li>
+                            <li><strong>Go to Application/Storage tab</strong> → Cookies → https://www.youtube.com</li>
+                            <li><strong>Find these cookies:</strong> SID, HSID, SSID, APISID, SAPISID, __Secure-3PAPISID</li>
+                            <li><strong>Copy the values</strong> and paste them below</li>
+                        </ol>
+                        
+                        <div style="background: #e8f5e8; border: 1px solid #4caf50; border-radius: 8px; padding: 15px; margin-top: 15px;">
+                            <p style="color: #2e7d32; margin: 0; font-weight: 600;">
+                                💡 <strong>Quick method:</strong> Use the "Extract from Browser" button below!
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label for="cookiesInput" style="display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600;">
+                            🍪 YouTube Cookies:
+                        </label>
+                        <textarea 
+                            id="cookiesInput" 
+                            placeholder="Paste your YouTube cookies here...&#10;Example: SID=abc123; HSID=def456; SSID=ghi789; APISID=jkl012; SAPISID=mno345; __Secure-3PAPISID=pqr678"
+                            style="
+                                width: 100%;
+                                min-height: 120px;
+                                padding: 15px;
+                                border: 2px solid #e0e0e0;
+                                border-radius: 10px;
+                                font-family: 'Courier New', monospace;
+                                font-size: 0.9rem;
+                                resize: vertical;
+                                background: #fafafa;
+                            "
+                        ></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="saveCookiesBtn" style="
+                            background: linear-gradient(45deg, #4caf50, #45a049);
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 10px;
+                            font-size: 1rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-save"></i> Save & Use Cookies
+                        </button>
+                        
+                        <button id="testCookiesBtn" style="
+                            background: linear-gradient(45deg, #2196f3, #1976d2);
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 10px;
+                            font-size: 1rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-vial"></i> Test Cookies
+                        </button>
+                        
+                        <button id="noCookiesModeBtn" style="
+                            background: linear-gradient(45deg, #ff9800, #f57c00);
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 10px;
+                            font-size: 1rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-robot"></i> CAPTCHA Bypass Mode
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                        <button id="skipCookiesBtn" style="
+                            background: #6c757d;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            font-size: 0.9rem;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-forward"></i> Skip for Now
+                        </button>
+                        
+                        <button id="resetCookiesBtn" style="
+                            background: #dc3545;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            font-size: 0.9rem;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    uploadCookiesFile() {
+        console.log('📁 Upload cookies file initiated...');
+        
+        // Create file input element
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.txt,.json';
+        fileInput.style.display = 'none';
+        
+        // Add change event listener
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                console.log('📁 File selected:', file.name, 'Size:', file.size);
+                
+                // Read file content
+                const content = await this.readFileContent(file);
+                console.log('📄 File content length:', content.length);
+                
+                // Determine format and upload
+                await this.processCookiesFile(content, file.name);
+                
+            } catch (error) {
+                console.error('❌ Error reading file:', error);
+                this.showNotification('Error reading file: ' + error.message, 'error');
+            }
+            
+            // Clean up
+            document.body.removeChild(fileInput);
+        });
+        
+        // Trigger file selection
+        document.body.appendChild(fileInput);
+        fileInput.click();
+    }
+    
+    async readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    }
+    
+    async processCookiesFile(content, filename) {
+        try {
+            console.log('🔍 Processing cookies file:', filename);
+            
+            // Determine format based on content
+            let format = 'netscape';
+            if (content.includes('"') && (content.includes('{') || content.includes('['))) {
+                format = 'json';
+            } else if (content.includes(';') && content.includes('=')) {
+                format = 'headerstring';
+            }
+            
+            console.log('📋 Detected format:', format);
+            
+            // Upload to server
+            const response = await fetch('/api/upload-cookies', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    cookiesData: content,
+                    format: format
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('✅ Cookies uploaded successfully:', result.message);
+                this.showNotification(`✅ ${result.message}`, 'success');
+                
+                // Update status display
+                this.updateUploadStatus(result.message, result.cookiesCount);
+                
+                // Hide cookies section after successful upload
+                setTimeout(() => {
+                    this.hideCookiesSection();
+                }, 2000);
+                
+            } else {
+                console.error('❌ Upload failed:', result.error);
+                this.showNotification(`❌ Upload failed: ${result.error}`, 'error');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error processing cookies file:', error);
+            this.showNotification('Error processing file: ' + error.message, 'error');
+        }
+    }
+    
+    updateUploadStatus(message, cookiesCount) {
+        const uploadStatus = document.getElementById('uploadStatus');
+        const statusMessage = document.getElementById('statusMessage');
+        const cookiesCountElement = document.getElementById('cookiesCount');
+        
+        if (uploadStatus && statusMessage && cookiesCountElement) {
+            statusMessage.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            cookiesCountElement.innerHTML = `📊 Cookies loaded: ${cookiesCount}`;
+            uploadStatus.style.display = 'block';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                uploadStatus.style.display = 'none';
+            }, 5000);
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        // Create notification
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+
+    autoFillCookieInputs() {
+        // Try to auto-fill any cookies we found
+        const storedCookies = localStorage.getItem('youtubeCookies');
+        if (storedCookies) {
+            try {
+                const cookies = JSON.parse(storedCookies);
+                console.log('🔍 Auto-filling cookie inputs with stored values:', cookies);
+                
+                // Fill in any available cookies
+                if (cookies.CONSENT) document.getElementById('consentCookie').value = cookies.CONSENT;
+                if (cookies.VISITOR_INFO1_LIVE) document.getElementById('visitorCookie').value = cookies.VISITOR_INFO1_LIVE;
+                if (cookies.YSC) document.getElementById('yscCookie').value = cookies.YSC;
+                if (cookies.LOGIN_INFO) document.getElementById('loginInfoCookie').value = cookies.LOGIN_INFO;
+                if (cookies.SID) document.getElementById('sidCookie').value = cookies.SID;
+                if (cookies.HSID) document.getElementById('hsidCookie').value = cookies.HSID;
+                if (cookies.SSID) document.getElementById('ssidCookie').value = cookies.SSID;
+                if (cookies.APISID) document.getElementById('apisidCookie').value = cookies.APISID;
+                if (cookies.SAPISID) document.getElementById('sapisidCookie').value = cookies.SAPISID;
+                
+                console.log('✅ Auto-filled cookie inputs');
+            } catch (error) {
+                console.log('❌ Error auto-filling cookies:', error);
+            }
+        }
+    }
 }
 
 // Global functions that can be called from HTML
