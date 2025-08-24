@@ -1719,73 +1719,168 @@ function extractVideoUrlsFromPage(html, quality, format) {
 // Download YouTube video via alternative method (when yt-dlp fails)
 async function downloadYouTubeViaAlternative(url, quality, format) {
     try {
+        console.log('🚀 === ALTERNATIVE DOWNLOAD METHOD STARTED ===');
         console.log('🔍 Alternative download method: Starting...');
+        console.log('📝 Input parameters - URL:', url, 'Quality:', quality, 'Format:', format);
         
         // Extract video ID from URL
+        console.log('🔍 Extracting video ID from URL...');
         const videoId = extractYouTubeVideoId(url);
         if (!videoId) {
-            throw new Error('Invalid YouTube URL');
+            console.error('❌ Failed to extract video ID from URL:', url);
+            throw new Error('Invalid YouTube URL - could not extract video ID');
         }
         
-        console.log('🔍 Video ID extracted:', videoId);
+        console.log('✅ Video ID extracted successfully:', videoId);
+        console.log('🔍 Video ID validation passed');
         
-        // Try to get video info from YouTube Data API v3 first
-        const apiKey = process.env.YOUTUBE_API_KEY;
-        if (!apiKey) {
-            throw new Error('YouTube API key not configured');
+        // Try to get video info from YouTube Data API v3 first (optional, for metadata only)
+        console.log('🔍 === STEP 1: YouTube Data API v3 Metadata Retrieval ===');
+        console.log('🔍 Attempting to retrieve video info from YouTube Data API v3 (for metadata only)...');
+        let videoInfo = null;
+        let apiKeyStatus = 'NOT_CONFIGURED';
+        
+        try {
+            const apiKey = process.env.YOUTUBE_API_KEY;
+            if (!apiKey) {
+                console.warn('⚠️ YouTube API key not configured. Skipping YouTube Data API v3 metadata retrieval.');
+                console.log('ℹ️ This is not critical - the alternative method will work without API metadata');
+                apiKeyStatus = 'NOT_CONFIGURED';
+            } else {
+                console.log('✅ YouTube API key found in environment variables');
+                apiKeyStatus = 'CONFIGURED';
+                
+                const videoInfoUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${apiKey}`;
+                console.log('🌐 Making request to YouTube Data API v3:', videoInfoUrl.replace(apiKey, '***HIDDEN***'));
+                
+                const videoInfoResponse = await axios.get(videoInfoUrl, { 
+                    timeout: 15000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    }
+                });
+                
+                console.log('📡 YouTube Data API v3 response received. Status:', videoInfoResponse.status);
+                console.log('📊 Response data structure:', Object.keys(videoInfoResponse.data));
+                
+                if (!videoInfoResponse.data.items || videoInfoResponse.data.items.length === 0) {
+                    console.warn('⚠️ Video not found or unavailable via YouTube Data API v3.');
+                    console.log('📊 API response items count:', videoInfoResponse.data.items ? videoInfoResponse.data.items.length : 'undefined');
+                } else {
+                    videoInfo = videoInfoResponse.data.items[0];
+                    console.log('✅ Video info retrieved from YouTube API v3 successfully!');
+                    console.log('📹 Video title:', videoInfo.snippet.title);
+                    console.log('📅 Published:', videoInfo.snippet.publishedAt);
+                    console.log('👁️ View count:', videoInfo.statistics.viewCount);
+                    console.log('⏱️ Duration:', videoInfo.contentDetails.duration);
+                }
+            }
+        } catch (apiError) {
+            console.error('❌ Error retrieving video info from YouTube Data API v3:', apiError.message);
+            console.error('🔍 Error details:', {
+                code: apiError.code,
+                status: apiError.response?.status,
+                statusText: apiError.response?.statusText,
+                data: apiError.response?.data
+            });
+            console.warn('⚠️ Proceeding with alternative download method without YouTube Data API v3 metadata.');
+            console.log('ℹ️ This is expected behavior when API key is missing or invalid');
         }
-        
-        const videoInfoUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${apiKey}`;
-        const videoInfoResponse = await axios.get(videoInfoUrl);
-        
-        if (!videoInfoResponse.data.items || videoInfoResponse.data.items.length === 0) {
-            throw new Error('Video not found or unavailable');
-        }
-        
-        const videoInfo = videoInfoResponse.data.items[0];
-        console.log('✅ Video info retrieved from YouTube API v3:', videoInfo.snippet.title);
         
         // Try to get download URLs by making a direct request to YouTube video page
-        console.log('🔍 Attempting to extract download URLs from video page...');
+        console.log('🔍 === STEP 2: Direct YouTube Video Page Scraping ===');
+        console.log('🔍 Attempting to extract download URLs from video page HTML...');
         
         try {
             // Make a request to the YouTube video page with enhanced headers
             const videoPageUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            console.log('🌐 Fetching YouTube video page:', videoPageUrl);
+            console.log('🔧 Using enhanced headers for bot detection bypass...');
+            
+            const enhancedHeaders = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Cache-Control': 'max-age=0',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com'
+            };
+            
+            console.log('📋 Request headers configured:', Object.keys(enhancedHeaders).length, 'headers');
+            console.log('⏱️ Setting request timeout to 30 seconds...');
+            
             const videoPageResponse = await axios.get(videoPageUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                    'Cache-Control': 'max-age=0',
-                    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                    'Sec-Ch-Ua-Mobile': '?0',
-                    'Sec-Ch-Ua-Platform': '"Windows"',
-                    'Referer': 'https://www.youtube.com/',
-                    'Origin': 'https://www.youtube.com'
-                },
-                timeout: 30000
+                headers: enhancedHeaders,
+                timeout: 30000,
+                maxRedirects: 5,
+                validateStatus: function (status) {
+                    console.log('📡 HTTP response status received:', status);
+                    return status >= 200 && status < 400; // Accept 2xx and 3xx status codes
+                }
             });
             
             const videoPageHtml = videoPageResponse.data;
-            console.log('✅ YouTube video page retrieved successfully');
+            console.log('✅ YouTube video page HTML retrieved successfully!');
+            console.log('📊 Response details:');
+            console.log('   - Status:', videoPageResponse.status);
+            console.log('   - Status text:', videoPageResponse.statusText);
+            console.log('   - Content type:', videoPageResponse.headers['content-type']);
+            console.log('   - Content length:', videoPageResponse.headers['content-length'] || 'unknown');
+            console.log('   - HTML size:', videoPageHtml.length, 'bytes');
+            console.log('   - HTML preview (first 200 chars):', videoPageHtml.substring(0, 200) + '...');
+            
+            // Check if we got a valid HTML response
+            if (!videoPageHtml || videoPageHtml.length < 1000) {
+                console.error('❌ HTML response seems too small or invalid');
+                console.log('📊 HTML length check failed - expected >1000 bytes, got:', videoPageHtml.length);
+                throw new Error('Invalid HTML response from YouTube page');
+            }
             
             // Try to extract video URLs from the page
+            console.log('🔍 === STEP 3: HTML Parsing and Video URL Extraction ===');
+            console.log('🔍 Parsing HTML to extract video URLs...');
+            console.log('🔧 Calling extractVideoUrlsFromPage function...');
+            
             const videoUrls = extractVideoUrlsFromPage(videoPageHtml, quality, format);
             
+            console.log('📊 Video URL extraction results:');
+            console.log('   - Total URLs found:', videoUrls ? videoUrls.length : 'undefined');
+            console.log('   - URLs array type:', Array.isArray(videoUrls) ? 'Array' : typeof videoUrls);
+            
             if (videoUrls && videoUrls.length > 0) {
-                console.log('✅ Found video URLs:', videoUrls.length);
+                console.log('✅ Found', videoUrls.length, 'potential video URLs from page HTML!');
+                
+                // Log all found URLs for debugging
+                videoUrls.forEach((url, index) => {
+                    console.log(`   ${index + 1}. ${url.substring(0, 100)}...`);
+                });
                 
                 // Get the best quality URL
                 const bestUrl = videoUrls[0];
-                console.log('🎯 Using best quality URL:', bestUrl.substring(0, 100) + '...');
+                console.log('🎯 === STEP 4: Direct Video Download ===');
+                console.log('🎯 Selected best quality URL for download:', bestUrl.substring(0, 100) + '...');
+                console.log('🔍 Full URL length:', bestUrl.length, 'characters');
+                
+                // Validate the URL format
+                if (!bestUrl.startsWith('http')) {
+                    console.error('❌ Invalid URL format - does not start with http:', bestUrl.substring(0, 50));
+                    throw new Error('Invalid video URL format extracted from HTML');
+                }
+                
+                console.log('✅ URL format validation passed');
+                console.log('🌐 Initiating direct download from video URL...');
+                console.log('⏱️ Setting download timeout to 60 seconds...');
                 
                 // Create a download stream from the URL
                 const downloadResponse = await axios({
@@ -1797,7 +1892,12 @@ async function downloadYouTubeViaAlternative(url, quality, format) {
                         'Referer': 'https://www.youtube.com/',
                         'Origin': 'https://www.youtube.com'
                     },
-                    timeout: 60000
+                    timeout: 60000,
+                    maxRedirects: 5,
+                    validateStatus: function (status) {
+                        console.log('📡 Video download response status:', status);
+                        return status >= 200 && status < 400;
+                    }
                 });
                 
                 const downloadStream = downloadResponse.data;
@@ -1807,20 +1907,60 @@ async function downloadYouTubeViaAlternative(url, quality, format) {
                 downloadStream.downloadQuality = quality;
                 downloadStream.downloadFormat = format;
                 
-                console.log('✅ Alternative download method succeeded - created download stream');
+                console.log('✅ === ALTERNATIVE DOWNLOAD METHOD SUCCEEDED ===');
+                console.log('✅ Alternative download method succeeded - created download stream from direct URL!');
+                console.log('📊 Final stream details:');
+                console.log('   - Library:', downloadStream.downloadLibrary);
+                console.log('   - Quality:', downloadStream.downloadQuality);
+                console.log('   - Format:', downloadStream.downloadFormat);
+                console.log('   - Stream readable:', downloadStream.readable);
+                console.log('   - Stream destroyed:', downloadStream.destroyed);
+                
                 return downloadStream;
                 
             } else {
-                throw new Error('No video URLs found in page HTML');
+                console.error('❌ === ALTERNATIVE DOWNLOAD METHOD FAILED ===');
+                console.error('❌ No video URLs found in page HTML after parsing.');
+                console.log('🔍 HTML content analysis:');
+                console.log('   - Contains "ytInitialPlayerResponse":', videoPageHtml.includes('ytInitialPlayerResponse'));
+                console.log('   - Contains "ytInitialData":', videoPageHtml.includes('ytInitialData'));
+                console.log('   - Contains "googlevideo.com":', videoPageHtml.includes('googlevideo.com'));
+                console.log('   - Contains "player_response":', videoPageHtml.includes('player_response'));
+                
+                throw new Error('No video URLs found in page HTML after parsing');
             }
             
         } catch (pageError) {
-            console.error('❌ Failed to extract video URLs from page:', pageError.message);
-            throw new Error(`Alternative method failed: ${pageError.message}`);
+            console.error('❌ === ALTERNATIVE DOWNLOAD METHOD FAILED ===');
+            console.error('❌ Failed to extract video URLs from page or initiate direct download:', pageError.message);
+            console.error('🔍 Error details:', {
+                name: pageError.name,
+                code: pageError.code,
+                status: pageError.response?.status,
+                statusText: pageError.response?.statusText,
+                message: pageError.message
+            });
+            
+            if (pageError.response) {
+                console.error('📡 HTTP response details:');
+                console.error('   - Status:', pageError.response.status);
+                console.error('   - Headers:', pageError.response.headers);
+                console.error('   - Data preview:', pageError.response.data ? pageError.response.data.substring(0, 200) + '...' : 'No data');
+            }
+            
+            throw new Error(`Alternative method failed during HTML parsing or direct download: ${pageError.message}`);
         }
         
     } catch (error) {
+        console.error('❌ === ALTERNATIVE DOWNLOAD METHOD CRITICAL ERROR ===');
         console.error('❌ Alternative download method error:', error);
+        console.error('🔍 Error stack trace:', error.stack);
+        console.error('📊 Error summary:', {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+            status: error.response?.status
+        });
         throw error;
     }
 }
