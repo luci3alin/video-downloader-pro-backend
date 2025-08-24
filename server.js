@@ -1097,11 +1097,15 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         
         console.log('🔧 Enhanced yt-dlp v2.0 format option:', formatOption);
         
-        // Use spawn directly instead of YTDlpWrap for better control
-        console.log('🔧 Using direct spawn for yt-dlp...');
-        console.log('🔐 Authentication method: Manual cookies file');
+        // Check if we're on Render.com (production)
+        const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
         
-        const ytDlpProcess = spawn(ytDlpPath, [
+        if (isProduction) {
+            console.log('🔧 Using CAPTCHA bypass mode for Render.com...');
+            console.log('🔐 Authentication method: CAPTCHA bypass (no cookies needed)');
+            
+            // On Render.com, use CAPTCHA bypass mode automatically
+            const ytDlpProcess = spawn(ytDlpPath, [
             url,
             '-o', '-',
             '-f', formatOption,
@@ -1109,9 +1113,8 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--no-warnings',
             '--no-progress',
             '--quiet',
-            // Enhanced anti-bot detection v4.0 with advanced CAPTCHA bypass
-            '--user-agent', getRandomUserAgent(),
-            '--cookies', getManualCookies(),
+            // ULTRA-AGGRESSIVE CAPTCHA bypass for Render.com
+            '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
             '--no-check-certificate',
             '--prefer-insecure',
             // Advanced CAPTCHA bypass and bot detection evasion v5.0
