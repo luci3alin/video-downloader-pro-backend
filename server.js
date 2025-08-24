@@ -1608,6 +1608,7 @@ function extractVideoUrlsFromPage(html, quality, format) {
             try {
                 const playerResponse = JSON.parse(ytInitialMatch[1]);
                 console.log('✅ Found ytInitialPlayerResponse');
+                console.log('🔍 Player response structure:', Object.keys(playerResponse));
                 
                 if (playerResponse.streamingData && playerResponse.streamingData.formats) {
                     const formats = playerResponse.streamingData.formats;
@@ -1618,23 +1619,31 @@ function extractVideoUrlsFromPage(html, quality, format) {
                     
                     if (quality !== 'highest') {
                         const targetHeight = parseInt(quality.replace('p', ''));
-                        filteredFormats = formats.filter(f => f.height <= targetHeight);
+                        console.log('🎯 Filtering for quality <=', targetHeight, 'p');
+                        filteredFormats = formats.filter(f => f.height && f.height <= targetHeight);
+                        console.log('📊 After quality filtering:', filteredFormats.length, 'formats');
                     }
                     
                     if (format === 'mp4') {
+                        console.log('🎯 Filtering for MP4 format');
                         filteredFormats = filteredFormats.filter(f => f.mimeType && f.mimeType.includes('video/mp4'));
+                        console.log('📊 After MP4 filtering:', filteredFormats.length, 'formats');
                     }
                     
                     // Sort by quality (highest first)
                     filteredFormats.sort((a, b) => (b.height || 0) - (a.height || 0));
                     
                     // Extract URLs
-                    filteredFormats.forEach(format => {
+                    filteredFormats.forEach((format, index) => {
                         if (format.url) {
                             urls.push(format.url);
-                            console.log(`🎯 Found format: ${format.height}p, ${format.mimeType}, URL length: ${format.url.length}`);
+                            console.log(`🎯 Found format ${index + 1}: ${format.height}p, ${format.mimeType}, URL length: ${format.url.length}`);
+                        } else {
+                            console.log(`⚠️ Format ${index + 1} missing URL:`, format.height, format.mimeType);
                         }
                     });
+                } else {
+                    console.log('⚠️ No streamingData.formats found in ytInitialPlayerResponse');
                 }
                 
                 if (playerResponse.streamingData && playerResponse.streamingData.adaptiveFormats) {
@@ -1646,28 +1655,48 @@ function extractVideoUrlsFromPage(html, quality, format) {
                     
                     if (quality !== 'highest') {
                         const targetHeight = parseInt(quality.replace('p', ''));
+                        console.log('🎯 Filtering adaptive formats for quality <=', targetHeight, 'p');
                         filteredAdaptive = adaptiveFormats.filter(f => f.height && f.height <= targetHeight);
+                        console.log('📊 After quality filtering:', filteredAdaptive.length, 'adaptive formats');
                     }
                     
                     if (format === 'mp4') {
+                        console.log('🎯 Filtering adaptive formats for MP4 format');
                         filteredAdaptive = filteredAdaptive.filter(f => f.mimeType && f.mimeType.includes('video/mp4'));
+                        console.log('📊 After MP4 filtering:', filteredAdaptive.length, 'adaptive formats');
                     }
                     
                     // Sort by quality
                     filteredAdaptive.sort((a, b) => (b.height || 0) - (a.height || 0));
                     
                     // Extract URLs
-                    filteredAdaptive.forEach(format => {
+                    filteredAdaptive.forEach((format, index) => {
                         if (format.url) {
                             urls.push(format.url);
-                            console.log(`🎯 Found adaptive format: ${format.height}p, ${format.mimeType}, URL length: ${format.url.length}`);
+                            console.log(`🎯 Found adaptive format ${index + 1}: ${format.height}p, ${format.mimeType}, URL length: ${format.url.length}`);
+                        } else {
+                            console.log(`⚠️ Adaptive format ${index + 1} missing URL:`, format.height, format.mimeType);
                         }
+                    });
+                } else {
+                    console.log('⚠️ No streamingData.adaptiveFormats found in ytInitialPlayerResponse');
+                }
+                
+                // Check for other potential video sources
+                if (playerResponse.videoDetails) {
+                    console.log('📹 Video details found:', {
+                        title: playerResponse.videoDetails.title?.substring(0, 50) + '...',
+                        lengthSeconds: playerResponse.videoDetails.lengthSeconds,
+                        viewCount: playerResponse.videoDetails.viewCount
                     });
                 }
                 
             } catch (parseError) {
                 console.error('❌ Error parsing ytInitialPlayerResponse:', parseError.message);
+                console.error('🔍 Parse error details:', parseError);
             }
+        } else {
+            console.log('⚠️ ytInitialPlayerResponse not found in HTML');
         }
         
         // Method 2: Look for ytInitialData
@@ -1688,23 +1717,104 @@ function extractVideoUrlsFromPage(html, quality, format) {
         }
         
         // Method 3: Look for direct video URLs in HTML
+        console.log('🔍 Searching for video URLs using multiple patterns...');
+        
+        // Pattern 1: Standard googlevideo.com URLs
         const videoUrlMatches = html.match(/https:\/\/[^"]*\.googlevideo\.com[^"]*/g);
         if (videoUrlMatches) {
-            console.log('✅ Found', videoUrlMatches.length, 'direct googlevideo.com URLs');
+            console.log('✅ Pattern 1: Found', videoUrlMatches.length, 'direct googlevideo.com URLs');
+            
+            // Log some sample URLs for debugging
+            videoUrlMatches.slice(0, 3).forEach((url, index) => {
+                console.log(`   Sample URL ${index + 1}: ${url.substring(0, 100)}...`);
+                console.log(`   URL length: ${url.length}, contains videoplayback: ${url.includes('videoplayback')}`);
+            });
+            
             urls.push(...videoUrlMatches);
         }
         
-        // Remove duplicates and filter valid URLs
-        const uniqueUrls = [...new Set(urls)].filter(url => 
-            url.includes('googlevideo.com') && 
-            url.includes('videoplayback') &&
-            url.length > 100
-        );
+        // Pattern 2: Look for URLs in quotes that might be truncated
+        const quotedUrlMatches = html.match(/"([^"]*googlevideo\.com[^"]*)"/g);
+        if (quotedUrlMatches) {
+            console.log('✅ Pattern 2: Found', quotedUrlMatches.length, 'quoted googlevideo.com URLs');
+            const cleanUrls = quotedUrlMatches.map(url => url.replace(/^"|"$/g, ''));
+            urls.push(...cleanUrls);
+        }
         
-        console.log('🎯 Total unique video URLs found:', uniqueUrls.length);
+        // Pattern 3: Look for base64 encoded URLs or other patterns
+        const base64Matches = html.match(/[A-Za-z0-9+/]{50,}={0,2}/g);
+        if (base64Matches) {
+            console.log('✅ Pattern 3: Found', base64Matches.length, 'potential base64 encoded strings');
+            // These might be encoded video URLs, but we'll focus on direct URLs for now
+        }
+        
+        // Pattern 4: Look for any URL-like strings containing googlevideo
+        const anyGooglevideoMatches = html.match(/[^"'\s]*googlevideo[^"'\s]*/g);
+        if (anyGooglevideoMatches) {
+            console.log('✅ Pattern 4: Found', anyGooglevideoMatches.length, 'any googlevideo references');
+            const validUrls = anyGooglevideoMatches.filter(url => url.startsWith('http'));
+            if (validUrls.length > 0) {
+                console.log('✅ Pattern 4: Found', validUrls.length, 'valid HTTP URLs with googlevideo');
+                urls.push(...validUrls);
+            }
+        }
+        
+        // Remove duplicates and filter valid URLs with more lenient criteria
+        console.log('🔍 Filtering URLs with criteria: googlevideo.com + videoplayback + length > 50');
+        
+        const uniqueUrls = [...new Set(urls)].filter(url => {
+            const isValid = url.includes('googlevideo.com') && 
+                           url.includes('videoplayback') &&
+                           url.length > 50; // Reduced from 100 to 50
+            
+            if (!isValid) {
+                console.log(`❌ URL filtered out: ${url.substring(0, 80)}...`);
+                console.log(`   - Contains googlevideo.com: ${url.includes('googlevideo.com')}`);
+                console.log(`   - Contains videoplayback: ${url.includes('videoplayback')}`);
+                console.log(`   - Length > 50: ${url.length > 50} (${url.length})`);
+            }
+            
+            return isValid;
+        });
+        
+        console.log('🎯 Total unique video URLs found after filtering:', uniqueUrls.length);
         
         if (uniqueUrls.length === 0) {
-            console.log('⚠️ No valid video URLs found in page HTML');
+            console.log('⚠️ No valid video URLs found in page HTML after filtering');
+            console.log('🔍 Debug info:');
+            console.log('   - Total URLs before filtering:', urls.length);
+            console.log('   - URLs with googlevideo.com:', urls.filter(u => u.includes('googlevideo.com')).length);
+            console.log('   - URLs with videoplayback:', urls.filter(u => u.includes('videoplayback')).length);
+            console.log('   - URLs with length > 50:', urls.filter(u => u.length > 50).length);
+            
+            // Try to find ANY googlevideo.com URLs as fallback
+            const fallbackUrls = [...new Set(urls)].filter(url => 
+                url.includes('googlevideo.com') && url.length > 30
+            );
+            
+            if (fallbackUrls.length > 0) {
+                console.log('🔄 Fallback: Found', fallbackUrls.length, 'googlevideo.com URLs (relaxed criteria)');
+                return fallbackUrls;
+            }
+            
+            // Final fallback: Try to extract ANY URLs from the HTML
+            console.log('🔄 Final fallback: Searching for any URLs in HTML...');
+            const anyUrlMatches = html.match(/https?:\/\/[^\s"']+/g);
+            if (anyUrlMatches) {
+                console.log('✅ Final fallback: Found', anyUrlMatches.length, 'any HTTP URLs');
+                const videoUrls = anyUrlMatches.filter(url => 
+                    url.includes('googlevideo.com') || 
+                    url.includes('youtube.com') ||
+                    url.includes('googlevideo')
+                );
+                
+                if (videoUrls.length > 0) {
+                    console.log('✅ Final fallback: Found', videoUrls.length, 'potential video URLs');
+                    return videoUrls;
+                }
+            }
+            
+            console.log('❌ All fallback methods failed - no video URLs found');
             return null;
         }
         
