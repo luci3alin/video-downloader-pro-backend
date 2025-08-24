@@ -1,0 +1,35 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'DEPLOYMENT.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'DEPLOYMENT_INSTRUCTIONS.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'clickme.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'debug_npm.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'fix_npm.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'fix_path.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'render.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'setup.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'sw.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test-enhanced-detection.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test-enhanced-v2.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test-ytdlp.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test.bat', LF will be replaced by CRLF the next time Git touches it
+.gitignore
+DEPLOYMENT.md
+DEPLOYMENT_INSTRUCTIONS.md
+README.md
+clickme.bat
+debug_npm.bat
+fix_npm.bat
+fix_path.bat
+package-lock.json
+package.json
+render.yaml
+server.js
+setup.bat
+sw.js
+test-enhanced-detection.js
+test-enhanced-v2.js
+test-ytdlp.js
+test.bat
