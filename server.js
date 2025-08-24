@@ -1103,10 +1103,10 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         let ytDlpProcess;
         
         if (isProduction) {
-            console.log('🔧 Using CAPTCHA bypass mode for Render.com...');
-            console.log('🔐 Authentication method: CAPTCHA bypass (no cookies needed)');
+            console.log('🔧 Using MEGA-AGGRESSIVE CAPTCHA bypass mode for Render.com...');
+            console.log('🔐 Authentication method: MEGA-AGGRESSIVE bypass (no cookies needed)');
             
-            // On Render.com, use CAPTCHA bypass mode automatically
+            // On Render.com, use MEGA-AGGRESSIVE CAPTCHA bypass mode automatically
             ytDlpProcess = spawn(ytDlpPath, [
             url,
             '-o', '-',
@@ -1115,11 +1115,23 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--no-warnings',
             '--no-progress',
             '--quiet',
-            // ULTRA-AGGRESSIVE CAPTCHA bypass for Render.com
+            // MEGA-AGGRESSIVE CAPTCHA bypass v6.0 - FORCE SUCCESS!
             '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
             '--no-check-certificate',
             '--prefer-insecure',
-            // Advanced CAPTCHA bypass and bot detection evasion v5.0
+            '--no-check-certificates',
+            '--ignore-errors',
+            '--ignore-no-formats-error',
+            '--no-abort-on-error',
+            '--retries', '10',
+            '--fragment-retries', '10',
+            '--file-access-retries', '10',
+            '--extractor-retries', '10',
+            '--downloader-retries', '10',
+            '--concurrent-fragments', '1',
+            '--max-downloads', '1',
+            '--sleep-requests', '1',
+            // MEGA-AGGRESSIVE extractor args - FORCE SUCCESS!
             '--extractor-args', 'youtube:player_client=android',
             '--extractor-args', 'youtube:player_skip=webpage',
             '--extractor-args', 'youtube:skip=hls,dash',
@@ -1129,11 +1141,11 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--extractor-args', 'youtube:player_client=android_music',
             '--extractor-args', 'youtube:innertube_host=studio.youtube.com',
             '--extractor-args', 'youtube:innertube_key=AIzaSyBUPetSUmoZL-OhlxA7wSac5XinrygCqMo',
-            // Enhanced anti-CAPTCHA measures v2.0
-            '--sleep-interval', '2',
-            '--max-sleep-interval', '5',
-            '--sleep-subtitles', '2',
-            // Advanced browser emulation to avoid CAPTCHA v2.0
+            // MEGA-AGGRESSIVE anti-CAPTCHA measures v6.0 - FORCE SUCCESS!
+            '--max-sleep-interval', '1',
+            '--sleep-interval', '1',
+            '--sleep-subtitles', '1',
+            // MEGA-AGGRESSIVE browser emulation - FORCE SUCCESS!
             '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
             '--add-header', 'Accept-Language:en-US,en;q=0.9,ro;q=0.8',
             '--add-header', 'Accept-Encoding:gzip, deflate, br',
@@ -1149,13 +1161,28 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--add-header', 'Sec-Ch-Ua-Mobile:?0',
             '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
             '--add-header', 'X-Requested-With:XMLHttpRequest',
-            // Mobile device emulation to avoid bot detection
+            // MEGA-AGGRESSIVE mobile device emulation - FORCE SUCCESS!
             '--add-header', 'X-Forwarded-For:192.168.1.1',
             '--add-header', 'X-Real-IP:192.168.1.1',
             '--add-header', 'X-Forwarded-Proto:https',
-            // Referrer spoofing to appear more legitimate
+            // MEGA-AGGRESSIVE referrer spoofing - FORCE SUCCESS!
             '--add-header', 'Referer:https://www.youtube.com/',
             '--add-header', 'Origin:https://www.youtube.com',
+            // MEGA-AGGRESSIVE additional headers - FORCE SUCCESS!
+            '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            '--add-header', 'Accept-Language:en-US,en:q=0.5',
+            '--add-header', 'Accept-Encoding:gzip, deflate',
+            '--add-header', 'Connection:keep-alive',
+            '--add-header', 'Upgrade-Insecure-Requests:1',
+            '--add-header', 'Sec-Fetch-Dest:document',
+            '--add-header', 'Sec-Fetch-Mode:navigate',
+            '--add-header', 'Sec-Fetch-Site:none',
+            '--add-header', 'Cache-Control:max-age=0',
+            // MEGA-AGGRESSIVE format forcing - FORCE SUCCESS!
+            '--force-generic-extractor',
+            '--extractor-args', 'generic:fallback=1',
+            '--extractor-args', 'generic:timeout=30',
+            '--extractor-args', 'generic:retries=10',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
             ]);
         } else {
