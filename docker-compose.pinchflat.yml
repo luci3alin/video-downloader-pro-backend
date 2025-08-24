@@ -1,0 +1,21 @@
+version: '3'
+services:
+  pinchflat:
+    image: ghcr.io/kieraneglin/pinchflat:latest
+    container_name: pinchflat
+    environment:
+      - TZ=America/New_York
+      - LOG_LEVEL=debug
+      - YT_DLP_WORKER_CONCURRENCY=2
+    ports:
+      - '8945:8945'
+    volumes:
+      - ./pinchflat-config:/config
+      - ./pinchflat-downloads:/downloads
+    restart: unless-stopped
+    networks:
+      - pinchflat-network
+
+networks:
+  pinchflat-network:
+    driver: bridge
