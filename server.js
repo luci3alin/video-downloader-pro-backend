@@ -1365,7 +1365,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
                 if (stderrBuffer.includes('Failed to extract any player response') || 
                     stderrBuffer.includes('No video formats found') ||
                     stderrBuffer.includes('LOGIN_REQUIRED')) {
-                    console.log('🔄 yt-dlp failed with extraction error - triggering fallback to YouTube API v3');
+                    console.log('🔄 yt-dlp failed with extraction error - triggering fallback to alternative download method');
                 }
             }
         });
@@ -1397,7 +1397,32 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         
         console.log('✅ Enhanced yt-dlp v2.0 download stream created successfully');
         
-        return downloadStream;
+        // Return a promise that resolves with the stream or rejects on yt-dlp failure
+        return new Promise((resolve, reject) => {
+            ytDlpProcess.on('exit', (code, signal) => {
+                if (code !== 0) {
+                    console.log(`🔚 yt-dlp process exited with code ${code}, signal ${signal}`);
+                    console.log('⚠️ yt-dlp process ended with non-zero exit code (may be due to missing browser cookies)');
+                    
+                    // Check if we should trigger fallback
+                    if (stderrBuffer.includes('Failed to extract any player response') || 
+                        stderrBuffer.includes('No video formats found') ||
+                        stderrBuffer.includes('LOGIN_REQUIRED')) {
+                        console.log('🔄 yt-dlp failed with extraction error - triggering fallback to alternative download method');
+                        reject(new Error('yt-dlp extraction failed - triggering fallback'));
+                        return;
+                    }
+                }
+                
+                // If we reach here, yt-dlp succeeded
+                resolve(downloadStream);
+            });
+            
+            // If yt-dlp succeeds immediately, resolve with the stream
+            if (ytDlpProcess.exitCode === 0) {
+                resolve(downloadStream);
+            }
+        });
         
     } catch (error) {
         console.error('❌ Enhanced yt-dlp v2.0 failed:', error);
@@ -1568,6 +1593,7 @@ async function downloadYouTube(url, quality, format) {
         throw new Error(`Failed to download YouTube video: ${error.message}`);
     }
 }
+
 
 // Extract video URLs from YouTube page HTML
 function extractVideoUrlsFromPage(html, quality, format) {
@@ -1798,6 +1824,7 @@ async function downloadYouTubeViaAlternative(url, quality, format) {
         throw error;
     }
 }
+
 
 // Download YouTube video directly via YouTube Data API v3
 async function downloadYouTubeViaAPIv3(url, quality, format) {
