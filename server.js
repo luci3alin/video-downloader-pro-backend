@@ -1100,12 +1100,14 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         // Check if we're on Render.com (production)
         const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
         
+        let ytDlpProcess;
+        
         if (isProduction) {
             console.log('🔧 Using CAPTCHA bypass mode for Render.com...');
             console.log('🔐 Authentication method: CAPTCHA bypass (no cookies needed)');
             
             // On Render.com, use CAPTCHA bypass mode automatically
-            const ytDlpProcess = spawn(ytDlpPath, [
+            ytDlpProcess = spawn(ytDlpPath, [
             url,
             '-o', '-',
             '-f', formatOption,
@@ -1155,7 +1157,30 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--add-header', 'Referer:https://www.youtube.com/',
             '--add-header', 'Origin:https://www.youtube.com',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
-        ]);
+            ]);
+        } else {
+            console.log('🔧 Using standard mode for local development...');
+            console.log('🔐 Authentication method: Manual cookies file');
+            
+            // On local, use standard mode with cookies
+            ytDlpProcess = spawn(ytDlpPath, [
+                url,
+                '-o', '-',
+                '-f', formatOption,
+                '--no-playlist',
+                '--no-warnings',
+                '--no-progress',
+                '--quiet',
+                '--user-agent', getRandomUserAgent(),
+                '--cookies', getManualCookies(),
+                '--no-check-certificate',
+                '--prefer-insecure',
+                // Standard anti-bot detection
+                '--extractor-args', 'youtube:player_client=android',
+                '--extractor-args', 'youtube:player_skip=webpage',
+                ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+            ]);
+        }
         
         // Add process monitoring
         ytDlpProcess.on('error', (error) => {
@@ -1200,7 +1225,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         });
         
         // Add download library info to the stream
-        downloadStream.downloadLibrary = 'yt-dlp (fallback)';
+        downloadStream.downloadLibrary = isProduction ? 'yt-dlp (primary on Render.com)' : 'yt-dlp (fallback)';
         downloadStream.downloadQuality = quality;
         downloadStream.downloadFormat = format;
         
