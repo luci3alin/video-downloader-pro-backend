@@ -1,0 +1,20 @@
+FROM ghcr.io/kieraneglin/pinchflat:latest
+
+# Set timezone
+ENV TZ=Europe/Bucharest
+
+# Set log level
+ENV LOG_LEVEL=info
+
+# Set yt-dlp worker concurrency
+ENV YT_DLP_WORKER_CONCURRENCY=2
+
+# Expose port
+EXPOSE 8945
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8945/ || exit 1
+
+# Default command
+CMD ["/app/bin/docker_start"]

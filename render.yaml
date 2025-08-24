@@ -1,51 +1,43 @@
 services:
+  # Main backend service
   - type: web
-    name: video-downloader-pro
+    name: video-downloader-backend
     env: node
-    plan: starter
-    buildCommand: |
-      npm install
-      echo "Downloading yt-dlp for Linux..."
-      curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
-      echo "Making yt-dlp executable..."
-      chmod +x yt-dlp
-      echo "Verifying yt-dlp installation..."
-      ls -la yt-dlp
-      echo "Testing yt-dlp execution..."
-      ./yt-dlp --version
-      echo "yt-dlp downloaded and made executable successfully"
+    buildCommand: npm install
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-      - key: YT_DLP_PATH
-        value: ./yt-dlp
-    buildpacks:
-services:
+      - key: YOUTUBE_API_KEY
+        sync: false  # Set this manually in Render dashboard
+    
+  # Pinchflat service (runs alongside backend)
   - type: web
-    name: video-downloader-pro
-    env: node
-    plan: starter
-    buildCommand: |
-      npm install
-      echo "Downloading yt-dlp for Linux..."
-      curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
-      echo "Making yt-dlp executable..."
-      chmod +x yt-dlp
-      echo "Verifying yt-dlp installation..."
-      ls -la yt-dlp
-      echo "Testing yt-dlp execution..."
-      ./yt-dlp --version
-      echo "yt-dlp downloaded and made executable successfully"
-    startCommand: node server.js
+    name: pinchflat-service
+    env: docker
+    dockerfilePath: ./Dockerfile.pinchflat
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
-      - key: YT_DLP_PATH
-        value: ./yt-dlp
-    buildpacks:
-      - https://github.com/heroku/heroku-buildpack-ffmpeg-latest.git
+      - key: TZ
+        value: Europe/Bucharest
+      - key: LOG_LEVEL
+        value: info
+      - key: YT_DLP_WORKER_CONCURRENCY
+        value: "2"
+    ports:
+      - "8945"
+    volumes:
+      - name: pinchflat-config
+        mountPath: /config
+      - name: pinchflat-downloads
+        mountPath: /downloads
+
+# Persistent volumes for Pinchflat
+volumes:
+  - name: pinchflat-config
+    mountPath: /config
+    sizeGB: 1
+  - name: pinchflat-downloads
+    mountPath: /downloads
+    sizeGB: 10
