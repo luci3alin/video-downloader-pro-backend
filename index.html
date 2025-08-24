@@ -1,1 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Downloader Pro - Download Videos from Social Media</title>
+    <link rel="stylesheet" href="styles.css?v=1.0.1">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-download"></i>
+                <h1>Video Downloader Pro</h1>
+            </div>
+            <p class="tagline">Download videos from popular social media platforms</p>
+            
+            <!-- Theme Switcher -->
+            <div class="theme-switcher">
+                <button class="theme-btn active" data-theme="default" title="Default Theme">
+                    <i class="fas fa-palette"></i>
+                </button>
+                <button class="theme-btn" data-theme="dark" title="Dark Theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="theme-btn" data-theme="sunset" title="Sunset Theme">
+                    <i class="fas fa-sun"></i>
+                </button>
+            </div>
+        </header>
 
+        <!-- Cookies Section - Simple and Direct -->
+        <div id="cookiesSection" class="cookies-section">
+            <div class="cookies-container">
+                <h3><i class="fas fa-shield-alt"></i> YouTube Cookies Setup</h3>
+                <p>To download YouTube videos, we need your YouTube cookies to bypass bot detection.</p>
+                
+                <div class="cookies-instructions">
+                    <h4>How to get cookies:</h4>
+                    <ol>
+                        <li>Go to <a href="https://youtube.com" target="_blank">YouTube.com</a> in your browser</li>
+                        <li>Make sure you're logged in</li>
+                        <li>Press F12 to open Developer Tools</li>
+                        <li>Go to Application/Storage → Cookies → youtube.com</li>
+                        <li>Copy the value of these cookies: <code>CONSENT</code>, <code>VISITOR_INFO1_LIVE</code>, <code>YSC</code></li>
+                    </ol>
+                </div>
+                
+                <div class="cookies-form">
+                    <div class="input-group">
+                        <label for="consentCookie">CONSENT Cookie:</label>
+                        <input type="text" id="consentCookie" placeholder="YES+cb.20241231-19-p0.en+FX+425">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="visitorCookie">VISITOR_INFO1_LIVE Cookie:</label>
+                        <input type="text" id="visitorCookie" placeholder="v1234567890">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="yscCookie">YSC Cookie:</label>
+                        <input type="text" id="yscCookie" placeholder="1234567890abcdef">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="loginInfoCookie">LOGIN_INFO Cookie (optional):</label>
+                        <input type="text" id="loginInfoCookie" placeholder="AFmmF2swRQIhAJ">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="sidCookie">SID Cookie (optional):</label>
+                        <input type="text" id="sidCookie" placeholder="OQjWNV_abc123">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="hsidCookie">HSID Cookie (optional):</label>
+                        <input type="text" id="hsidCookie" placeholder="AbC123dEf456">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="ssidCookie">SSID Cookie (optional):</label>
+                        <input type="text" id="ssidCookie" placeholder="GhI789jKl012">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="apisidCookie">APISID Cookie (optional):</label>
+                        <input type="text" id="apisidCookie" placeholder="MnO345pQr678">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="sapisidCookie">SAPISID Cookie (optional):</label>
+                        <input type="text" id="sapisidCookie" placeholder="StU901vWx234">
+                    </div>
+                    
+                    <div class="cookies-note">
+                        <p><strong>💡 PRO TIP IMPORTANT:</strong> Pentru a evita bot detection, copiază TOATE cookies-urile din browser-ul tău! Cu cât mai multe, cu atât mai bine!</p>
+                        <p><strong>🔍 Cum să obții cookies:</strong></p>
+                        <ol>
+                            <li>Deschide <a href="https://youtube.com" target="_blank">YouTube.com</a> în browser</li>
+                            <li>Fă-te logat cu contul tău Google</li>
+                            <li>Apasă F12 → Application → Storage → Cookies → youtube.com</li>
+                            <li>Copiază valorile pentru CONSENT, VISITOR_INFO1_LIVE, YSC și toate celelalte</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="cookies-upload-section">
+                        <h4><i class="fas fa-file-upload"></i> Upload Cookies File (RECOMANDAT!)</h4>
+                        <p><strong>🎯 CEL MAI UȘOR MOD:</strong> Încarcă direct fișierul de cookies din browser!</p>
+                        
+                        <div class="upload-instructions">
+                            <h5>📁 Cum să descarci cookies în format Netscape:</h5>
+                            <ol>
+                                <li>Instalează extensia <a href="https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm" target="_blank">Cookie Editor</a> pentru Chrome/Edge</li>
+                                <li>Mergi pe <a href="https://youtube.com" target="_blank">YouTube.com</a> (logat)</li>
+                                <li>Apasă pe extensia Cookie Editor</li>
+                                <li>Apasă "Export" → "Export as Netscape HTTP Cookie File"</li>
+                                <li>Salvează fișierul .txt</li>
+                                <li>Apasă "Upload Cookies File" de mai jos</li>
+                            </ol>
+                            
+                            <h5>📋 Sau copiază manual din F12:</h5>
+                            <ol>
+                                <li>F12 → Application → Cookies → youtube.com</li>
+                                <li>Selectează toate cookies-urile</li>
+                                <li>Copiază în format: <code>cookie1=value1; cookie2=value2</code></li>
+                                <li>Selectează format "HeaderString" la upload</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="upload-status" id="uploadStatus" style="display: none;">
+                            <div class="status-message" id="statusMessage"></div>
+                            <div class="cookies-count" id="cookiesCount"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="cookies-buttons">
+                        <button id="uploadCookiesBtn" class="upload-btn" style="border: 3px solid purple !important; background-color: purple !important; color: white !important;" onclick="videoDownloader.uploadCookiesFile()">
+                            <i class="fas fa-upload"></i>
+                            Upload Cookies File
+                        </button>
+                        <button id="saveCookiesBtn" class="save-btn" style="border: 3px solid green !important; background-color: green !important; color: white !important;" onclick="alert('Save button clicked!')">
+                            <i class="fas fa-save"></i>
+                            Save Cookies
+                        </button>
+                        <button id="testCookiesBtn" class="test-btn" style="border: 3px solid blue !important; background-color: blue !important; color: white !important;" onclick="alert('Test button clicked!')">
+                            <i class="fas fa-vial"></i>
+                            Test Cookies
+                        </button>
+                        <button id="noCookiesModeBtn" class="nocookies-btn" style="border: 3px solid orange !important; background-color: orange !important; color: white !important;" onclick="alert('CAPTCHA bypass button clicked!')">
+                            <i class="fas fa-robot"></i>
+                            CAPTCHA Bypass Mode
+                        </button>
+                        <button id="skipCookiesBtn" class="skip-btn" style="border: 3px solid gray !important; background-color: gray !important; color: white !important;" onclick="alert('Skip button clicked!')">
+                            <i class="fas fa-times"></i>
+                            Skip
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Download Form -->
+            <div class="download-section">
+                <div class="form-container">
+                    <h2>Download Video</h2>
+                    <form id="downloadForm" class="download-form">
+                        <div class="input-group">
+                            <label for="videoUrl">Video URL</label>
+                            <div class="url-input">
+                                <input type="url" id="videoUrl" name="videoUrl" placeholder="Paste video URL here..." required>
+                                <button type="button" class="paste-btn" onclick="pasteFromClipboard()">
+                                    <i class="fas fa-paste"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="platform-info">
+                            <h4>Supported Platforms:</h4>
+                            <div class="platforms">
+                                <span class="platform"><i class="fab fa-youtube"></i> YouTube</span>
+                                <span class="platform"><i class="fas fa-music"></i> YouTube Playlists</span>
+                                <span class="platform"><i class="fab fa-twitter"></i> Twitter/X</span>
+                                <span class="platform"><i class="fab fa-instagram"></i> Instagram</span>
+                                <span class="platform"><i class="fab fa-tiktok"></i> TikTok</span>
+                                <span class="platform"><i class="fab fa-vimeo"></i> Vimeo</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="download-btn">
+                            <i class="fas fa-download"></i>
+                            Download Video
+                        </button>
+                        
+                        <button type="button" id="resetCookiesBtn" class="reset-cookies-btn" onclick="alert('Reset cookies button clicked!')">
+                            <i class="fas fa-cookie-bite"></i>
+                            Reset Cookies
+                        </button>
+                        
+                        <button type="button" id="acceptCookiesBtn" class="accept-cookies-btn" onclick="alert('Accept cookies button clicked!')">
+                            <i class="fas fa-shield-alt"></i>
+                            Accept Cookies
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="results-section" style="display: none;">
+                <h3>Download Options</h3>
+                <div id="videoInfo" class="video-info">
+                    <!-- Video info will be populated here -->
+                </div>
+                <div id="downloadOptions" class="download-options">
+                    <!-- Download options will be populated here -->
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progressSection" class="progress-section" style="display: none;">
+                <h3>Download Progress</h3>
+                <div class="progress-bar">
+                    <div id="progressBar" class="progress-fill"></div>
+                </div>
+                <p id="progressText">Preparing download...</p>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorSection" class="error-section" style="display: none;">
+                <div class="error-content">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h3>Download Error</h3>
+                    <p id="errorMessage">An error occurred during download.</p>
+                    <button onclick="hideError()" class="retry-btn">Try Again</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Donation Section - Outside Main Container -->
+        <div class="donation-section-outer">
+            <div class="donation-section">
+                <div class="donation-container">
+                    <div class="donation-header">
+                        <i class="fas fa-heart"></i>
+                        <h3>Support Us</h3>
+                    </div>
+                    <p class="donation-text">Help us maintain and improve this website!</p>
+                    
+                    <div class="donation-options">
+                        <div class="donation-option">
+                            <i class="fas fa-coffee"></i>
+                            <span>Buy me a coffee</span>
+                        </div>
+                        <div class="donation-option">
+                            <i class="fas fa-server"></i>
+                            <span>Server costs</span>
+                        </div>
+                        <div class="donation-option">
+                            <i class="fas fa-code"></i>
+                            <span>Development</span>
+                        </div>
+                    </div>
+
+                    <div class="donate-buttons">
+                        <a href="https://revolut.me/luci3alin" target="_blank" class="donate-btn revolut-btn">
+                            <i class="fab fa-cc-mastercard"></i>
+                            <span>Donate via Revolut</span>
+                        </a>
+                        
+                        <a href="https://www.paypal.com/paypalme/weakoosenpai" target="_blank" class="donate-btn paypal-btn">
+                            <i class="fab fa-paypal"></i>
+                            <span>Donate via PayPal</span>
+                        </a>
+                    </div>
+
+                    <div class="donation-message">
+                        <p>Every donation helps us keep this service free! 💙</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Important Information</h4>
+                    <p>This tool respects platform terms of service and copyright laws. Use responsibly.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Supported Formats</h4>
+                    <p>MP4, WebM, MOV, AVI, and more depending on platform availability.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>For support or questions about legal usage.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Video Downloader Pro. All rights reserved. | <a href="#" id="legalNoticeLink" class="legal-link">Legal Notice</a></p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Legal Notice Popup -->
+    <div id="legalNoticePopup" class="popup-overlay" style="display: none;">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Legal Notice</h3>
+                <button class="popup-close" id="closeLegalPopup">&times;</button>
+            </div>
+            <div class="popup-body">
+                <p>This tool is for downloading videos you own or have permission to download. Only use for:</p>
+                <ul>
+                    <li>Your own content</li>
+                    <li>Public domain content</li>
+                    <li>Content with explicit permission</li>
+                    <li>Educational/fair use purposes</li>
+                </ul>
+                <p><strong>Users are responsible for ensuring they have legal rights to download any content.</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=1.0.1"></script>
+    
+</body>
+</html>
