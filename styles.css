@@ -2496,6 +2496,106 @@ body {
     margin-top: 15px;
 }
 
+/* Cookies Upload Section Styles */
+.cookies-upload-section {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.cookies-upload-section h4 {
+    color: var(--primary-color);
+    margin: 0 0 15px 0;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cookies-upload-section p {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.upload-instructions {
+    margin-bottom: 20px;
+}
+
+.upload-instructions h5 {
+    color: var(--accent-color);
+    margin: 15px 0 10px 0;
+    font-size: 1.1rem;
+}
+
+.upload-instructions ol {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--text-secondary);
+}
+
+.upload-instructions li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+.upload-instructions a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.upload-instructions a:hover {
+    text-decoration: underline;
+}
+
+.upload-status {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+    text-align: center;
+}
+
+.status-message {
+    color: var(--success-color);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.cookies-count {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Upload Button Styles */
+.upload-btn {
+    background: linear-gradient(135deg, #9c27b0, #673ab7) !important;
+    color: white !important;
+    border: 3px solid #9c27b0 !important;
+    padding: 18px 35px !important;
+    border-radius: 12px !important;
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 160px !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3) !important;
+}
+
+.upload-btn:hover {
+    background: linear-gradient(135deg, #7b1fa2, #5e35b1) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(156, 39, 176, 0.4) !important;
+}
+
 .cookies-buttons {
     display: flex;
     gap: 15px;
@@ -2505,7 +2605,7 @@ body {
     margin-top: 20px;
 }
 
-.save-btn, .test-btn, .nocookies-btn, .skip-btn, .deny-btn {
+.save-btn, .test-btn, .nocookies-btn, .skip-btn, .deny-btn, .upload-btn {
     padding: 18px 35px;
     border: none;
     border-radius: 12px;

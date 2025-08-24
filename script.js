@@ -1733,6 +1733,121 @@ class VideoDownloader {
         }
     }
 
+    uploadCookiesFile() {
+        console.log('📁 Upload cookies file initiated...');
+        
+        // Create file input element
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.txt,.json';
+        fileInput.style.display = 'none';
+        
+        // Add change event listener
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                console.log('📁 File selected:', file.name, 'Size:', file.size);
+                
+                // Read file content
+                const content = await this.readFileContent(file);
+                console.log('📄 File content length:', content.length);
+                
+                // Determine format and upload
+                await this.processCookiesFile(content, file.name);
+                
+            } catch (error) {
+                console.error('❌ Error reading file:', error);
+                this.showNotification('Error reading file: ' + error.message, 'error');
+            }
+            
+            // Clean up
+            document.body.removeChild(fileInput);
+        });
+        
+        // Trigger file selection
+        document.body.appendChild(fileInput);
+        fileInput.click();
+    }
+    
+    async readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    }
+    
+    async processCookiesFile(content, filename) {
+        try {
+            console.log('🔍 Processing cookies file:', filename);
+            
+            // Determine format based on content
+            let format = 'netscape';
+            if (content.includes('"') && (content.includes('{') || content.includes('['))) {
+                format = 'json';
+            } else if (content.includes(';') && content.includes('=')) {
+                format = 'headerstring';
+            }
+            
+            console.log('📋 Detected format:', format);
+            
+            // Upload to server
+            const response = await fetch('/api/upload-cookies', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    cookiesData: content,
+                    format: format
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('✅ Cookies uploaded successfully:', result.message);
+                this.showNotification(`✅ ${result.message}`, 'success');
+                
+                // Update status display
+                this.updateUploadStatus(result.message, result.cookiesCount);
+                
+                // Hide cookies section after successful upload
+                setTimeout(() => {
+                    this.hideCookiesSection();
+                }, 2000);
+                
+            } else {
+                console.error('❌ Upload failed:', result.error);
+                this.showNotification(`❌ Upload failed: ${result.error}`, 'error');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error processing cookies file:', error);
+            this.showNotification('Error processing file: ' + error.message, 'error');
+        }
+    }
+    
+    updateUploadStatus(message, cookiesCount) {
+        const uploadStatus = document.getElementById('uploadStatus');
+        const statusMessage = document.getElementById('statusMessage');
+        const cookiesCountElement = document.getElementById('cookiesCount');
+        
+        if (uploadStatus && statusMessage && cookiesCountElement) {
+            statusMessage.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            cookiesCountElement.innerHTML = `📊 Cookies loaded: ${cookiesCount}`;
+            uploadStatus.style.display = 'block';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                uploadStatus.style.display = 'none';
+            }, 5000);
+        }
+    }
+
     showNotification(message, type = 'info') {
         // Create notification
         const notification = document.createElement('div');

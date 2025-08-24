@@ -1,0 +1,28 @@
+# Netscape HTTP Cookie File
+# This file contains REAL YouTube cookies from uploaded file
+# Generated automatically from user upload
+.youtube.com	TRUE	/	FALSE	1787604154	0	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	1	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	2	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	3	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	4	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	5	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	6	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	7	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	8	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	9	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	10	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	11	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	12	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	13	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	14	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	15	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	16	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	17	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	18	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	19	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	20	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	21	[object Object]
+.youtube.com	TRUE	/	FALSE	1787604154	CONSENT	YES+cb.20241231-19-p0.en+FX+425
+.youtube.com	TRUE	/	FALSE	1787604154	VISITOR_INFO1_LIVE	vjwhh2e7zkad
+.youtube.com	TRUE	/	FALSE	1787604154	YSC	z98g5swpw7a
