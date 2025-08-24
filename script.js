@@ -19,9 +19,8 @@ class VideoDownloader {
 
         // Show cookies section if permission not granted OR if cookies are missing
         if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
-            setTimeout(() => {
-                this.showCookiesSection();
-            }, 1000); // Show after 1 second
+            // Show immediately instead of with delay
+            this.showCookiesSection();
         }
     }
 
@@ -1425,8 +1424,11 @@ class VideoDownloader {
     showCookiesSection() {
         const cookiesSection = document.getElementById('cookiesSection');
         if (cookiesSection) {
-            // Force display and add show class
-            cookiesSection.style.display = 'block';
+            // Force display with !important equivalent
+            cookiesSection.style.setProperty('display', 'block', 'important');
+            cookiesSection.style.setProperty('opacity', '1', 'important');
+            cookiesSection.style.setProperty('visibility', 'visible', 'important');
+            cookiesSection.style.setProperty('z-index', '10000', 'important');
             cookiesSection.classList.add('show');
             
             // Initialize events
@@ -1438,7 +1440,7 @@ class VideoDownloader {
             // Show helpful instructions
             this.showCookieInstructions();
             
-            console.log('🔍 Cookies section displayed');
+            console.log('🔍 Cookies section displayed with forced visibility');
         } else {
             console.error('❌ Cookies section not found!');
         }
@@ -1447,8 +1449,12 @@ class VideoDownloader {
     hideCookiesSection() {
         const cookiesSection = document.getElementById('cookiesSection');
         if (cookiesSection) {
-            cookiesSection.style.display = 'none';
-            console.log('🔍 Cookies section hidden');
+            // Force hide with !important equivalent
+            cookiesSection.style.setProperty('display', 'none', 'important');
+            cookiesSection.style.setProperty('opacity', '0', 'important');
+            cookiesSection.style.setProperty('visibility', 'hidden', 'important');
+            cookiesSection.classList.remove('show');
+            console.log('🔍 Cookies section hidden with forced hiding');
         }
     }
     
@@ -1560,8 +1566,8 @@ class VideoDownloader {
         // Show success message
         this.showCookiesSuccess();
         
-        // Hide cookies section
-        this.hideCookiesSection();
+        // Don't hide cookies section automatically - let user close it manually
+        // this.hideCookiesSection();
     }
     
     acceptCookiesAutomatically() {
@@ -1716,8 +1722,8 @@ class VideoDownloader {
         // Show success message
         this.showNotification('✅ Cookies extracted and saved successfully! Testing if they work...', 'success');
         
-        // Hide cookies section
-        this.hideCookiesSection();
+        // Don't hide cookies section automatically - let user close it manually
+        // this.hideCookiesSection();
     }
     
     testCookies(cookies) {
@@ -1774,7 +1780,8 @@ class VideoDownloader {
         console.log('🔍 Skipping cookies permission...');
         localStorage.setItem('cookiesPermission', 'skipped');
         this.cookiesPermissionGranted = false;
-        this.hideCookiesSection();
+        // Don't hide cookies section automatically - let user close it manually
+        // this.hideCookiesSection();
         this.showCookiesInfo();
     }
     
@@ -1837,7 +1844,21 @@ class VideoDownloader {
         // Show detailed instructions for getting cookies
         const instructions = `
             <div class="cookie-instructions">
-                <h3>🔍 How to get YouTube cookies:</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>🔍 How to get YouTube cookies:</h3>
+                    <button onclick="videoDownloader.hideCookiesSection()" style="
+                        background: #ff4757; 
+                        color: white; 
+                        border: none; 
+                        padding: 8px 15px; 
+                        border-radius: 8px; 
+                        cursor: pointer; 
+                        font-size: 0.9rem;
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.background='#ff3742'" onmouseout="this.style.background='#ff4757'">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
                 <ol>
                     <li><strong>Go to YouTube.com</strong> and make sure you're logged in</li>
                     <li><strong>Press F12</strong> to open Developer Tools</li>
@@ -1911,8 +1932,8 @@ class VideoDownloader {
                 // Show success message
                 this.showNotification('🤖 CAPTCHA Bypass Mode enabled! Downloads will use advanced bot detection evasion without cookies.', 'success');
                 
-                // Hide cookies section
-                this.hideCookiesSection();
+                // Don't hide cookies section automatically - let user close it manually
+                // this.hideCookiesSection();
             }
             
             async sendCaptchaBypassToServer() {
