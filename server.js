@@ -54,9 +54,6 @@ function getManualCookies() {
     const fs = require('fs');
     const cookieFile = './youtube_cookies.txt';
     
-    // Use ONLY real user cookies - no defaults!
-    const cookiesToUse = userCookies;
-    
     // Check if CAPTCHA bypass mode is enabled
     if (global.captchaBypassEnabled) {
         console.log('🤖 CAPTCHA Bypass Mode enabled - using advanced bot evasion without cookies');
@@ -78,6 +75,16 @@ function getManualCookies() {
             throw new Error('Failed to create CAPTCHA bypass cookie file');
         }
     }
+    
+    // Check if we have uploaded cookies file
+    const uploadedCookieFile = './youtube_cookies_uploaded.txt';
+    if (fs.existsSync(uploadedCookieFile)) {
+        console.log('🍪 Using uploaded cookies file for authentication');
+        return uploadedCookieFile;
+    }
+    
+    // Use manual cookies from frontend if available
+    const cookiesToUse = userCookies;
     
     // If no real cookies, FAIL - we need real ones!
     if (!cookiesToUse || !cookiesToUse.CONSENT || !cookiesToUse.VISITOR_INFO1_LIVE || !cookiesToUse.YSC) {
@@ -127,6 +134,77 @@ function generateSessionId() {
 // Generate realistic timestamp
 function generateTimestamp() {
     return Math.floor(Date.now() / 1000);
+}
+
+// Parse Netscape format cookies
+function parseNetscapeCookies(cookiesData) {
+    const cookies = {};
+    const lines = cookiesData.split('\n');
+    
+    for (const line of lines) {
+        // Skip comments and empty lines
+        if (line.startsWith('#') || line.trim() === '') continue;
+        
+        const parts = line.split('\t');
+        if (parts.length >= 7) {
+            const domain = parts[0];
+            const path = parts[2];
+            const secure = parts[3] === 'TRUE';
+            const expiry = parts[4];
+            const name = parts[5];
+            const value = parts[6];
+            
+            // Only process YouTube cookies
+            if (domain.includes('youtube.com') || domain.includes('.youtube.com')) {
+                cookies[name] = value;
+                console.log(`🍪 Parsed cookie: ${name} = ${value.substring(0, 20)}...`);
+            }
+        }
+    }
+    
+    return cookies;
+}
+
+// Parse HeaderString format cookies
+function parseHeaderStringCookies(cookiesData) {
+    const cookies = {};
+    const cookiePairs = cookiesData.split(';');
+    
+    for (const pair of cookiePairs) {
+        const [name, value] = pair.trim().split('=');
+        if (name && value) {
+            cookies[name.trim()] = value.trim();
+            console.log(`🍪 Parsed header cookie: ${name.trim()} = ${value.trim().substring(0, 20)}...`);
+        }
+    }
+    
+    return cookies;
+}
+
+// Create cookies file from parsed cookies
+function createCookiesFileFromParsed(parsedCookies) {
+    const cookieFile = './youtube_cookies_uploaded.txt';
+    
+    // Create Netscape format cookies file
+    let netscapeCookies = `# Netscape HTTP Cookie File
+# This file contains REAL YouTube cookies from uploaded file
+# Generated automatically from user upload
+`;
+    
+    // Add each cookie in Netscape format
+    for (const [name, value] of Object.entries(parsedCookies)) {
+        const expiry = Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60); // 1 year from now
+        netscapeCookies += `.youtube.com\tTRUE\t/\tFALSE\t${expiry}\t${name}\t${value}\n`;
+    }
+    
+    try {
+        fs.writeFileSync(cookieFile, netscapeCookies);
+        console.log('✅ Created cookies file from uploaded data:', cookieFile);
+        return cookieFile;
+    } catch (error) {
+        console.error('❌ Error creating cookies file:', error);
+        throw new Error('Failed to create cookies file from uploaded data');
+    }
 }
 
 
@@ -2323,6 +2401,120 @@ app.post('/enable-captcha-bypass', (req, res) => {
     } catch (error) {
         console.error('❌ Error enabling CAPTCHA bypass:', error);
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Upload cookies file endpoint
+app.post('/api/upload-cookies', (req, res) => {
+    try {
+        const { cookiesData, format } = req.body;
+        
+        if (!cookiesData) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Cookies data is required' 
+            });
+        }
+        
+        console.log('🍪 Uploading cookies file, format:', format);
+        
+        let parsedCookies = {};
+        
+        try {
+            if (format === 'netscape') {
+                // Parse Netscape format cookies
+                parsedCookies = parseNetscapeCookies(cookiesData);
+            } else if (format === 'json') {
+                // Parse JSON format cookies
+                parsedCookies = JSON.parse(cookiesData);
+            } else if (format === 'headerstring') {
+                // Parse HeaderString format cookies
+                parsedCookies = parseHeaderStringCookies(cookiesData);
+            } else {
+                throw new Error('Unsupported format. Use: netscape, json, or headerstring');
+            }
+            
+            console.log('🍪 Successfully parsed cookies:', Object.keys(parsedCookies));
+            
+            // Update global user cookies
+            userCookies = {
+                ...userCookies,
+                ...parsedCookies
+            };
+            
+            // Create cookies file for yt-dlp
+            const cookieFile = createCookiesFileFromParsed(userCookies);
+            
+            res.json({ 
+                success: true, 
+                message: `Successfully uploaded ${Object.keys(parsedCookies).length} cookies`,
+                cookiesCount: Object.keys(parsedCookies).length,
+                cookieFile: cookieFile
+            });
+            
+        } catch (parseError) {
+            console.error('❌ Error parsing cookies:', parseError);
+            res.status(400).json({ 
+                success: false, 
+                error: `Failed to parse cookies: ${parseError.message}` 
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Error uploading cookies:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// Get cookies status endpoint
+app.get('/api/cookies-status', (req, res) => {
+    try {
+        const fs = require('fs');
+        
+        let status = {
+            hasUploadedCookies: false,
+            hasManualCookies: false,
+            cookiesCount: 0,
+            cookieFile: null
+        };
+        
+        // Check for uploaded cookies file
+        const uploadedCookieFile = './youtube_cookies_uploaded.txt';
+        if (fs.existsSync(uploadedCookieFile)) {
+            status.hasUploadedCookies = true;
+            status.cookieFile = uploadedCookieFile;
+            
+            // Count cookies in file
+            try {
+                const content = fs.readFileSync(uploadedCookieFile, 'utf8');
+                const lines = content.split('\n').filter(line => 
+                    line.trim() !== '' && !line.startsWith('#') && line.includes('\t')
+                );
+                status.cookiesCount = lines.length;
+            } catch (error) {
+                console.error('Error reading uploaded cookies file:', error);
+            }
+        }
+        
+        // Check for manual cookies
+        if (userCookies && Object.keys(userCookies).length > 0) {
+            status.hasManualCookies = true;
+        }
+        
+        res.json({
+            success: true,
+            status: status
+        });
+        
+    } catch (error) {
+        console.error('❌ Error getting cookies status:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
     }
 });
 
