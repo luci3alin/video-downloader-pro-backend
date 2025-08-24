@@ -257,137 +257,54 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Pinchflat integration
-let pinchflatProcess = null;
 let pinchflatStatus = 'stopped';
 
 // Initialize PornHub client
 const pornhub = new PornHub();
 
-// Start Pinchflat when server starts
+// Check Pinchflat service status (for Render deployment)
 async function startPinchflat() {
     try {
-        console.log('🐳 Checking Pinchflat service...');
+        console.log('🐳 Checking Pinchflat service status...');
         
-        // Create directories if they don't exist
-        if (!fs.existsSync('./pinchflat-config')) {
-            fs.mkdirSync('./pinchflat-config', { recursive: true });
-            console.log('✅ Created pinchflat-config directory');
-        }
-        if (!fs.existsSync('./pinchflat-downloads')) {
-            fs.mkdirSync('./pinchflat-downloads', { recursive: true });
-            console.log('✅ Created pinchflat-downloads directory');
-        }
+        // Get Pinchflat URL from environment or use default
+        const pinchflatUrl = process.env.PINCHFLAT_URL || 'http://localhost:8945';
+        console.log('🔗 Pinchflat service URL:', pinchflatUrl);
         
-        // Check if Pinchflat is already running by trying to access the main page
+        // Try to connect to Pinchflat service
         try {
-            const response = await axios.get('http://localhost:8945/', { timeout: 5000 });
+            const response = await axios.get(`${pinchflatUrl}/`, { timeout: 10000 });
             if (response.status === 200) {
-                console.log('✅ Pinchflat is already running on port 8945');
+                console.log('✅ Pinchflat service is accessible');
                 pinchflatStatus = 'running';
                 return;
             }
         } catch (healthError) {
-            console.log('⚠️ Pinchflat health check failed, checking Docker status...');
+            console.log('⚠️ Pinchflat service not accessible:', healthError.message);
+            
+            // On Render, this is expected during first deployment
+            if (process.env.RENDER) {
+                console.log('ℹ️ Running on Render - Pinchflat service may not be ready yet');
+                console.log('ℹ️ Pinchflat will be available after both services deploy');
+                pinchflatStatus = 'deploying';
+                return;
+            }
         }
         
-        // Check if Pinchflat container is running
-        try {
-            const dockerCheck = spawn('docker', ['ps', '--filter', 'ancestor=ghcr.io/kieraneglin/pinchflat:latest', '--format', '{{.Names}}']);
-            
-            let containerName = '';
-            dockerCheck.stdout.on('data', (data) => {
-                containerName = data.toString().trim();
-            });
-            
-            dockerCheck.on('close', async (code) => {
-                if (code === 0 && containerName) {
-                    console.log('✅ Found running Pinchflat container:', containerName);
-                    pinchflatStatus = 'running';
-                    
-                    // Wait a bit for the container to be fully ready
-                    setTimeout(async () => {
-                        try {
-                            const healthResponse = await axios.get('http://localhost:8945/', { timeout: 5000 });
-                            if (healthResponse.status === 200) {
-                                console.log('✅ Pinchflat is fully ready and responding');
-                                pinchflatStatus = 'running';
-                            }
-                        } catch (error) {
-                            console.log('⚠️ Pinchflat health check still failing, but container is running');
-                        }
-                    }, 3000);
-                } else {
-                    console.log('⚠️ No running Pinchflat container found, starting new one...');
-                    startNewPinchflatContainer();
-                }
-            });
-            
-        } catch (dockerError) {
-            console.log('⚠️ Docker check failed, starting new Pinchflat container...');
-            startNewPinchflatContainer();
-        }
+        console.log('⚠️ Pinchflat service not available');
+        pinchflatStatus = 'stopped';
         
     } catch (error) {
-        console.error('❌ Failed to check Pinchflat:', error);
+        console.error('❌ Failed to check Pinchflat service:', error);
         pinchflatStatus = 'error';
     }
 }
 
-// Start new Pinchflat container
-function startNewPinchflatContainer() {
-    try {
-        console.log('🐳 Starting new Pinchflat container...');
-        
-        // Start Pinchflat container
-        pinchflatProcess = spawn('docker', [
-            'run', '--rm',
-            '-p', '8945:8945',
-            '-v', `${__dirname}/pinchflat-config:/config`,
-            '-v', `${__dirname}/pinchflat-downloads:/downloads`,
-            'ghcr.io/kieraneglin/pinchflat:latest'
-        ]);
-        
-        pinchflatProcess.stdout.on('data', (data) => {
-            console.log('🐳 Pinchflat:', data.toString().trim());
-        });
-        
-        pinchflatProcess.stderr.on('data', (data) => {
-            console.log('🐳 Pinchflat Error:', data.toString().trim());
-        });
-        
-        pinchflatProcess.on('error', (error) => {
-            console.error('❌ Pinchflat process error:', error);
-            pinchflatStatus = 'error';
-        });
-        
-        pinchflatProcess.on('exit', (code, signal) => {
-            console.log(`🔚 Pinchflat process exited with code ${code}, signal ${signal}`);
-            pinchflatStatus = 'stopped';
-        });
-        
-        pinchflatStatus = 'starting';
-        
-        // Wait a bit for Pinchflat to start
-        setTimeout(() => {
-            if (pinchflatStatus === 'starting') {
-                pinchflatStatus = 'running';
-                console.log('✅ Pinchflat started successfully on port 8945');
-            }
-        }, 5000);
-        
-    } catch (error) {
-        console.error('❌ Failed to start new Pinchflat container:', error);
-        pinchflatStatus = 'error';
-    }
-}
+
 
 // Graceful shutdown
 process.on('SIGINT', () => {
     console.log('🔄 Shutting down gracefully...');
-    if (pinchflatProcess) {
-        pinchflatProcess.kill();
-        console.log('✅ Pinchflat stopped');
-    }
     process.exit();
 });
 
