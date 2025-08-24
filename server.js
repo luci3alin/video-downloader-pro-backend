@@ -1188,7 +1188,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
                 console.log('🔧 Using uploaded cookies on Render.com...');
                 console.log('🔐 Authentication method: Uploaded cookies file');
                 
-                // Use uploaded cookies on Render.com
+                // Use uploaded cookies on Render.com with enhanced authentication
                 ytDlpProcess = spawn(ytDlpPath, [
                     url,
                     '-o', '-',
@@ -1197,7 +1197,7 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
                     '--no-warnings',
                     '--no-progress',
                     '--verbose',
-                    '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
+                    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     '--cookies', './youtube_cookies_uploaded.txt',
                     '--no-check-certificate',
                     '--prefer-insecure',
@@ -1210,9 +1210,32 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
                     '--extractor-retries', '10',
                     '--concurrent-fragments', '1',
                     '--max-downloads', '1',
+                    // Enhanced authentication with multiple player clients
+                    '--extractor-args', 'youtube:player_client=web',
                     '--extractor-args', 'youtube:player_client=android',
+                    '--extractor-args', 'youtube:player_client=ios',
+                    '--extractor-args', 'youtube:player_client=android_creator',
+                    '--extractor-args', 'youtube:player_client=android_music',
                     '--extractor-args', 'youtube:player_skip=webpage',
                     '--extractor-args', 'youtube:skip=hls,dash',
+                    // Enhanced headers for better authentication
+                    '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                    '--add-header', 'Accept-Language:en-US,en;q=0.9',
+                    '--add-header', 'Accept-Encoding:gzip, deflate, br',
+                    '--add-header', 'DNT:1',
+                    '--add-header', 'Connection:keep-alive',
+                    '--add-header', 'Upgrade-Insecure-Requests:1',
+                    '--add-header', 'Sec-Fetch-Dest:document',
+                    '--add-header', 'Sec-Fetch-Mode:navigate',
+                    '--add-header', 'Sec-Fetch-Site:none',
+                    '--add-header', 'Sec-Fetch-User:?1',
+                    '--add-header', 'Cache-Control:max-age=0',
+                    '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    '--add-header', 'Sec-Ch-Ua-Mobile:?0',
+                    '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
+                    '--add-header', 'X-Requested-With:XMLHttpRequest',
+                    '--add-header', 'Referer:https://www.youtube.com/',
+                    '--add-header', 'Origin:https://www.youtube.com',
                     '--sleep-interval', '1',
                     ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
                 ]);
@@ -1467,9 +1490,9 @@ async function downloadYouTube(url, quality, format) {
         const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
         
         if (isProduction) {
-            console.log('📥 DOWNLOAD START -', quality, format, '- yt-dlp (PRIMARY on Render.com)');
+            console.log('📥 DOWNLOAD START -', quality, format, '- yt-dlp → YouTube API v3 (PRIMARY on Render.com)');
             
-            // On Render.com, use yt-dlp directly (ytdl-core doesn't work)
+            // On Render.com, try yt-dlp first, then fallback to YouTube API v3
             try {
                 console.log('🥇 DOWNLOAD STEP 1: Using yt-dlp (PRIMARY on Render.com)...');
                 
@@ -1479,7 +1502,20 @@ async function downloadYouTube(url, quality, format) {
                 
             } catch (ytDlpError) {
                 console.log('❌ DOWNLOAD STEP 1 FAILED: yt-dlp failed on Render.com');
-                throw new Error(`yt-dlp failed on Render.com: ${ytDlpError.message}`);
+                console.log('🔄 FALLBACK: Moving to YouTube API v3 direct download...');
+                
+                // Fallback to YouTube API v3 direct download
+                try {
+                    console.log('🥈 DOWNLOAD STEP 2: Using YouTube API v3 direct download (FALLBACK on Render.com)...');
+                    
+                    const result = await downloadYouTubeViaAPIv3(url, quality, format);
+                    console.log('✅ DOWNLOAD STEP 2 SUCCESS: YouTube API v3 direct download succeeded on Render.com');
+                    return result;
+                    
+                } catch (apiError) {
+                    console.log('❌ DOWNLOAD STEP 2 FAILED: YouTube API v3 direct download failed on Render.com');
+                    throw new Error(`Both yt-dlp and YouTube API v3 failed on Render.com: ${ytDlpError.message}, ${apiError.message}`);
+                }
             }
         } else {
             console.log('📥 DOWNLOAD START -', quality, format, '- ytdl-core → yt-dlp (LOCAL)');
@@ -1514,6 +1550,46 @@ async function downloadYouTube(url, quality, format) {
     } catch (error) {
         console.error('❌ downloadYouTube failed:', error);
         throw new Error(`Failed to download YouTube video: ${error.message}`);
+    }
+}
+
+// Download YouTube video directly via YouTube Data API v3
+async function downloadYouTubeViaAPIv3(url, quality, format) {
+    try {
+        console.log('🔍 YouTube API v3 direct download: Starting...');
+        
+        // Extract video ID from URL
+        const videoId = extractYouTubeVideoId(url);
+        if (!videoId) {
+            throw new Error('Invalid YouTube URL');
+        }
+        
+        console.log('🔍 Video ID extracted:', videoId);
+        
+        // Get video info from YouTube Data API v3
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        if (!apiKey) {
+            throw new Error('YouTube API key not configured');
+        }
+        
+        const videoInfoUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${apiKey}`;
+        const videoInfoResponse = await axios.get(videoInfoUrl);
+        
+        if (!videoInfoResponse.data.items || videoInfoResponse.data.items.length === 0) {
+            throw new Error('Video not found or unavailable');
+        }
+        
+        const videoInfo = videoInfoResponse.data.items[0];
+        console.log('✅ Video info retrieved from YouTube API v3:', videoInfo.snippet.title);
+        
+        // For now, we'll return a message that direct download via API v3 is not possible
+        // YouTube Data API v3 doesn't provide direct video download URLs
+        // This is just a placeholder for future implementation
+        throw new Error('Direct download via YouTube Data API v3 is not supported. YouTube API v3 only provides metadata, not video content.');
+        
+    } catch (error) {
+        console.error('❌ YouTube API v3 direct download error:', error);
+        throw error;
     }
 }
 
