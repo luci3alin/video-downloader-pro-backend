@@ -1181,73 +1181,110 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
         let ytDlpProcess;
         
         if (isProduction) {
-            console.log('🔧 Using MEGA-AGGRESSIVE CAPTCHA bypass mode for Render.com...');
-            console.log('🔐 Authentication method: MEGA-AGGRESSIVE bypass (no cookies needed)');
+            // Check if we have uploaded cookies
+            const hasUploadedCookies = fs.existsSync('./youtube_cookies_uploaded.txt');
             
-            // On Render.com, use MEGA-AGGRESSIVE CAPTCHA bypass mode automatically
-            ytDlpProcess = spawn(ytDlpPath, [
-            url,
-            '-o', '-',
-            '-f', formatOption,
-            '--no-playlist',
-            '--no-warnings',
-            '--no-progress',
-            '--verbose',
-            // MEGA-AGGRESSIVE CAPTCHA bypass v6.0 - FORCE SUCCESS!
-            '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
-            '--no-check-certificate',
-            '--prefer-insecure',
-            '--ignore-errors',
-            '--ignore-no-formats-error',
-            '--no-abort-on-error',
-            '--retries', '10',
-            '--fragment-retries', '10',
-            '--file-access-retries', '10',
-            '--extractor-retries', '10',
-            '--concurrent-fragments', '1',
-            '--max-downloads', '1',
-            // MEGA-AGGRESSIVE extractor args - FORCE SUCCESS!
-            '--extractor-args', 'youtube:player_client=android',
-            '--extractor-args', 'youtube:player_skip=webpage',
-            '--extractor-args', 'youtube:skip=hls,dash',
-            // MEGA-AGGRESSIVE anti-CAPTCHA measures v6.0 - FORCE SUCCESS!
-            '--sleep-interval', '1',
-            // MEGA-AGGRESSIVE browser emulation - FORCE SUCCESS!
-            '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-            '--add-header', 'Accept-Language:en-US,en;q=0.9,ro;q=0.8',
-            '--add-header', 'Accept-Encoding:gzip, deflate, br',
-            '--add-header', 'DNT:1',
-            '--add-header', 'Connection:keep-alive',
-            '--add-header', 'Upgrade-Insecure-Requests:1',
-            '--add-header', 'Sec-Fetch-Dest:document',
-            '--add-header', 'Sec-Fetch-Mode:navigate',
-            '--add-header', 'Sec-Fetch-Site:none',
-            '--add-header', 'Sec-Fetch-User:?1',
-            '--add-header', 'Cache-Control:max-age=0',
-            '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            '--add-header', 'Sec-Ch-Ua-Mobile:?0',
-            '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
-            '--add-header', 'X-Requested-With:XMLHttpRequest',
-            // MEGA-AGGRESSIVE mobile device emulation - FORCE SUCCESS!
-            '--add-header', 'X-Forwarded-For:192.168.1.1',
-            '--add-header', 'X-Real-IP:192.168.1.1',
-            '--add-header', 'X-Forwarded-Proto:https',
-            // MEGA-AGGRESSIVE referrer spoofing - FORCE SUCCESS!
-            '--add-header', 'Referer:https://www.youtube.com/',
-            '--add-header', 'Origin:https://www.youtube.com',
-            // MEGA-AGGRESSIVE additional headers - FORCE SUCCESS!
-            '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            '--add-header', 'Accept-Language:en-US,en:q=0.5',
-            '--add-header', 'Accept-Encoding:gzip, deflate',
-            '--add-header', 'Connection:keep-alive',
-            '--add-header', 'Upgrade-Insecure-Requests:1',
-            '--add-header', 'Sec-Fetch-Dest:document',
-            '--add-header', 'Sec-Fetch-Mode:navigate',
-            '--add-header', 'Sec-Fetch-Site:none',
-            '--add-header', 'Cache-Control:max-age=0',
-            // MEGA-AGGRESSIVE format forcing - FORCE SUCCESS!
-            ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
-            ]);
+            if (hasUploadedCookies) {
+                console.log('🔧 Using uploaded cookies on Render.com...');
+                console.log('🔐 Authentication method: Uploaded cookies file');
+                
+                // Use uploaded cookies on Render.com
+                ytDlpProcess = spawn(ytDlpPath, [
+                    url,
+                    '-o', '-',
+                    '-f', formatOption,
+                    '--no-playlist',
+                    '--no-warnings',
+                    '--no-progress',
+                    '--verbose',
+                    '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
+                    '--cookies', './youtube_cookies_uploaded.txt',
+                    '--no-check-certificate',
+                    '--prefer-insecure',
+                    '--ignore-errors',
+                    '--ignore-no-formats-error',
+                    '--no-abort-on-error',
+                    '--retries', '10',
+                    '--fragment-retries', '10',
+                    '--file-access-retries', '10',
+                    '--extractor-retries', '10',
+                    '--concurrent-fragments', '1',
+                    '--max-downloads', '1',
+                    '--extractor-args', 'youtube:player_client=android',
+                    '--extractor-args', 'youtube:player_skip=webpage',
+                    '--extractor-args', 'youtube:skip=hls,dash',
+                    '--sleep-interval', '1',
+                    ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+                ]);
+            } else {
+                console.log('🔧 Using MEGA-AGGRESSIVE CAPTCHA bypass mode for Render.com...');
+                console.log('🔐 Authentication method: MEGA-AGGRESSIVE bypass (no cookies needed)');
+                
+                // On Render.com, use MEGA-AGGRESSIVE CAPTCHA bypass mode automatically
+                ytDlpProcess = spawn(ytDlpPath, [
+                    url,
+                    '-o', '-',
+                    '-f', formatOption,
+                    '--no-playlist',
+                    '--no-warnings',
+                    '--no-progress',
+                    '--verbose',
+                    // MEGA-AGGRESSIVE CAPTCHA bypass v6.0 - FORCE SUCCESS!
+                    '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
+                    '--no-check-certificate',
+                    '--prefer-insecure',
+                    '--ignore-errors',
+                    '--ignore-no-formats-error',
+                    '--no-abort-on-error',
+                    '--retries', '10',
+                    '--fragment-retries', '10',
+                    '--file-access-retries', '10',
+                    '--extractor-retries', '10',
+                    '--concurrent-fragments', '1',
+                    '--max-downloads', '1',
+                    // MEGA-AGGRESSIVE extractor args - FORCE SUCCESS!
+                    '--extractor-args', 'youtube:player_client=android',
+                    '--extractor-args', 'youtube:player_skip=webpage',
+                    '--extractor-args', 'youtube:skip=hls,dash',
+                    // MEGA-AGGRESSIVE anti-CAPTCHA measures v6.0 - FORCE SUCCESS!
+                    '--sleep-interval', '1',
+                    // MEGA-AGGRESSIVE browser emulation - FORCE SUCCESS!
+                    '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                    '--add-header', 'Accept-Language:en-US,en;q=0.9,ro;q=0.8',
+                    '--add-header', 'Accept-Encoding:gzip, deflate, br',
+                    '--add-header', 'DNT:1',
+                    '--add-header', 'Connection:keep-alive',
+                    '--add-header', 'Upgrade-Insecure-Requests:1',
+                    '--add-header', 'Sec-Fetch-Dest:document',
+                    '--add-header', 'Sec-Fetch-Mode:navigate',
+                    '--add-header', 'Sec-Fetch-Site:none',
+                    '--add-header', 'Sec-Fetch-User:?1',
+                    '--add-header', 'Cache-Control:max-age=0',
+                    '--add-header', 'Sec-Ch-Ua:"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    '--add-header', 'Sec-Ch-Ua-Mobile:?0',
+                    '--add-header', 'Sec-Ch-Ua-Platform:"Windows"',
+                    '--add-header', 'X-Requested-With:XMLHttpRequest',
+                    // MEGA-AGGRESSIVE mobile device emulation - FORCE SUCCESS!
+                    '--add-header', 'X-Forwarded-For:192.168.1.1',
+                    '--add-header', 'X-Real-IP:192.168.1.1',
+                    '--add-header', 'X-Forwarded-Proto:https',
+                    // MEGA-AGGRESSIVE referrer spoofing - FORCE SUCCESS!
+                    '--add-header', 'Referer:https://www.youtube.com/',
+                    '--add-header', 'Origin:https://www.youtube.com',
+                    // MEGA-AGGRESSIVE additional headers - FORCE SUCCESS!
+                    '--add-header', 'Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    '--add-header', 'Accept-Language:en-US,en:q=0.5',
+                    '--add-header', 'Accept-Encoding:gzip, deflate',
+                    '--add-header', 'Connection:keep-alive',
+                    '--add-header', 'Upgrade-Insecure-Requests:1',
+                    '--add-header', 'Sec-Fetch-Dest:document',
+                    '--add-header', 'Sec-Fetch-Mode:navigate',
+                    '--add-header', 'Sec-Fetch-Site:none',
+                    '--add-header', 'Cache-Control:max-age=0',
+                    // MEGA-AGGRESSIVE format forcing - FORCE SUCCESS!
+                    ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
+                ]);
+            }
         } else {
             console.log('🔧 Using standard mode for local development...');
             console.log('🔐 Authentication method: Manual cookies file');
