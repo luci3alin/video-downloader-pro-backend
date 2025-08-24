@@ -22,3 +22,5 @@ services:
         value: 10000
       - key: YT_DLP_PATH
         value: ./yt-dlp
+    buildpacks:
+      - https://github.com/heroku/heroku-buildpack-ffmpeg-latest.git

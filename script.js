@@ -2,12 +2,14 @@
 
 class VideoDownloader {
         constructor() {
+        console.log('🚀 VideoDownloader constructor started');
         this.initializeEventListeners();
         this.currentUrl = '';
         this.downloadProgress = 0;
 
         // Check if cookies permission was already granted
         this.cookiesPermissionGranted = localStorage.getItem('cookiesPermission') === 'granted';
+        console.log('🔍 Cookies permission status:', this.cookiesPermissionGranted);
 
         // Initialize platform attributes after DOM is loaded
         setTimeout(() => {
@@ -26,6 +28,8 @@ class VideoDownloader {
         } else {
             console.log('🔍 Cookies permission already granted');
         }
+        
+        console.log('🚀 VideoDownloader constructor completed');
     }
 
     initializeEventListeners() {
@@ -1428,7 +1432,14 @@ class VideoDownloader {
     showCookiesSection() {
         const cookiesSection = document.getElementById('cookiesSection');
         if (cookiesSection) {
+            // Force display and add show class
             cookiesSection.style.display = 'block';
+            cookiesSection.classList.add('show');
+            cookiesSection.style.opacity = '1';
+            cookiesSection.style.visibility = 'visible';
+            
+            // Add a border to make it more visible for debugging
+            cookiesSection.style.border = '3px solid red';
             
             // Initialize events
             this.initializeCookiesSectionEvents();
@@ -1440,6 +1451,9 @@ class VideoDownloader {
             this.showCookieInstructions();
             
             console.log('🔍 Cookies section displayed');
+            console.log('🔍 Cookies section style:', cookiesSection.style.display);
+            console.log('🔍 Cookies section classes:', cookiesSection.className);
+            console.log('🔍 Cookies section computed style:', window.getComputedStyle(cookiesSection).display);
         } else {
             console.error('❌ Cookies section not found!');
         }
@@ -1456,31 +1470,42 @@ class VideoDownloader {
     initializeCookiesSectionEvents() {
         console.log('🔍 Initializing cookies section events...');
         
-                        const saveBtn = document.getElementById('saveCookiesBtn');
-                const testBtn = document.getElementById('testCookiesBtn');
-                const noCookiesBtn = document.getElementById('noCookiesModeBtn');
-                const skipBtn = document.getElementById('skipCookiesBtn');
-                
-                console.log('🔍 Save button found:', !!saveBtn);
-                console.log('🔍 Test button found:', !!testBtn);
-                console.log('🔍 No cookies button found:', !!noCookiesBtn);
-                console.log('🔍 Skip button found:', !!skipBtn);
+        const saveBtn = document.getElementById('saveCookiesBtn');
+        const testBtn = document.getElementById('testCookiesBtn');
+        const noCookiesBtn = document.getElementById('noCookiesModeBtn');
+        const skipBtn = document.getElementById('skipCookiesBtn');
         
+        console.log('🔍 Save button found:', !!saveBtn);
+        console.log('🔍 Test button found:', !!testBtn);
+        console.log('🔍 No cookies button found:', !!noCookiesBtn);
+        console.log('🔍 Skip button found:', !!skipBtn);
+        
+        // Add visual debugging to buttons
         if (saveBtn) {
+            saveBtn.style.border = '2px solid green';
+            saveBtn.style.backgroundColor = 'green';
             saveBtn.addEventListener('click', () => this.saveCookiesPermission());
         }
         
-                        if (testBtn) {
-                    testBtn.addEventListener('click', () => this.testCurrentCookies());
-                }
-                
-                if (noCookiesBtn) {
-                    noCookiesBtn.addEventListener('click', () => this.enableCaptchaBypassMode());
-                }
-                
-                if (skipBtn) {
-                    skipBtn.addEventListener('click', () => this.skipCookiesPermission());
-                }
+        if (testBtn) {
+            testBtn.style.border = '2px solid blue';
+            testBtn.style.backgroundColor = 'blue';
+            testBtn.addEventListener('click', () => this.testCurrentCookies());
+        }
+        
+        if (noCookiesBtn) {
+            noCookiesBtn.style.border = '2px solid orange';
+            noCookiesBtn.style.backgroundColor = 'orange';
+            noCookiesBtn.addEventListener('click', () => this.enableCaptchaBypassMode());
+        }
+        
+        if (skipBtn) {
+            skipBtn.style.border = '2px solid gray';
+            skipBtn.style.backgroundColor = 'gray';
+            skipBtn.addEventListener('click', () => this.skipCookiesPermission());
+        }
+        
+        console.log('🔍 All cookie section events initialized');
     }
     
     initializeCookiesButtons() {
@@ -1974,6 +1999,13 @@ let videoDownloader;
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        console.log('🌐 DOM Content Loaded');
+        console.log('🔍 Cookies section element:', document.getElementById('cookiesSection'));
+        console.log('🔍 Save button element:', document.getElementById('saveCookiesBtn'));
+        console.log('🔍 Test button element:', document.getElementById('testCookiesBtn'));
+        console.log('🔍 No cookies button element:', document.getElementById('noCookiesModeBtn'));
+        console.log('🔍 Skip button element:', document.getElementById('skipCookiesBtn'));
+        
         videoDownloader = new VideoDownloader();
     } catch (error) {
         console.error('Failed to initialize VideoDownloader:', error);
