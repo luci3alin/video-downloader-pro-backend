@@ -14,14 +14,8 @@ class VideoDownloader {
             this.initializePlatformAttributes();
         }, 100);
         
-        // Initialize cookies buttons
-        this.initializeCookiesButtons();
-
-        // Show cookies section if permission not granted OR if cookies are missing
-        if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
-            // Show immediately instead of with delay
-            this.showCookiesSection();
-        }
+        // Initialize cookies section
+        this.initializeCookiesSection();
     }
 
     initializeEventListeners() {
@@ -1421,6 +1415,63 @@ class VideoDownloader {
     }
     
     // Cookies Modal Functions
+    initializeCookiesSection() {
+        // Check if cookies permission is granted
+        if (!this.cookiesPermissionGranted || !localStorage.getItem('youtubeCookies')) {
+            // Show cookies section immediately
+            this.showCookiesSection();
+        }
+        
+        // Initialize cookie section events
+        this.initializeCookieSectionEvents();
+    }
+    
+    initializeCookieSectionEvents() {
+        console.log('🔍 Initializing cookies section events...');
+        
+        // Find all cookie-related buttons
+        const saveBtn = document.getElementById('saveCookiesBtn');
+        const testBtn = document.getElementById('testCookiesBtn');
+        const noCookiesBtn = document.getElementById('noCookiesModeBtn');
+        const skipBtn = document.getElementById('skipCookiesBtn');
+        const resetBtn = document.getElementById('resetCookiesBtn');
+        const acceptBtn = document.getElementById('acceptCookiesBtn');
+        
+        console.log('🔍 Save button found:', !!saveBtn);
+        console.log('🔍 Test button found:', !!testBtn);
+        console.log('🔍 No cookies button found:', !!noCookiesBtn);
+        console.log('🔍 Skip button found:', !!skipBtn);
+        console.log('🔍 Reset button found:', !!resetBtn);
+        console.log('🔍 Accept button found:', !!acceptBtn);
+        
+        // Add event listeners
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveAndUseCookies());
+        }
+        
+        if (testBtn) {
+            testBtn.addEventListener('click', () => this.testCookies());
+        }
+        
+        if (noCookiesBtn) {
+            noCookiesBtn.addEventListener('click', () => this.enableCaptchaBypassMode());
+        }
+        
+        if (skipBtn) {
+            skipBtn.addEventListener('click', () => this.skipCookiesPermission());
+        }
+        
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.resetCookies());
+        }
+        
+        if (acceptBtn) {
+            acceptBtn.addEventListener('click', () => this.saveCookiesPermission());
+        }
+        
+        console.log('🔍 All cookie section events initialized');
+    }
+    
     showCookiesSection() {
         const cookiesSection = document.getElementById('cookiesSection');
         if (cookiesSection) {
@@ -1430,16 +1481,6 @@ class VideoDownloader {
             cookiesSection.style.setProperty('visibility', 'visible', 'important');
             cookiesSection.style.setProperty('z-index', '10000', 'important');
             cookiesSection.classList.add('show');
-            
-            // Initialize events
-            this.initializeCookiesSectionEvents();
-            
-            // Auto-fill any cookies we found
-            this.autoFillCookieInputs();
-            
-            // Show helpful instructions
-            this.showCookieInstructions();
-            
             console.log('🔍 Cookies section displayed with forced visibility');
         } else {
             console.error('❌ Cookies section not found!');
@@ -1458,343 +1499,240 @@ class VideoDownloader {
         }
     }
     
-    initializeCookiesSectionEvents() {
-        console.log('🔍 Initializing cookies section events...');
-        
-        const saveBtn = document.getElementById('saveCookiesBtn');
-        const testBtn = document.getElementById('testCookiesBtn');
-        const noCookiesBtn = document.getElementById('noCookiesModeBtn');
-        const skipBtn = document.getElementById('skipCookiesBtn');
-        
-        console.log('🔍 Save button found:', !!saveBtn);
-        console.log('🔍 Test button found:', !!testBtn);
-        console.log('🔍 No cookies button found:', !!noCookiesBtn);
-        console.log('🔍 Skip button found:', !!skipBtn);
-        
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => this.saveCookiesPermission());
-        }
-        
-        if (testBtn) {
-            testBtn.addEventListener('click', () => this.testCurrentCookies());
-        }
-        
-        if (noCookiesBtn) {
-            noCookiesBtn.addEventListener('click', () => this.enableCaptchaBypassMode());
-        }
-        
-        if (skipBtn) {
-            skipBtn.addEventListener('click', () => this.skipCookiesPermission());
-        }
-        
-        console.log('🔍 All cookie section events initialized');
-    }
-    
-    initializeCookiesButtons() {
-        const resetBtn = document.getElementById('resetCookiesBtn');
-        const acceptBtn = document.getElementById('acceptCookiesBtn');
-        
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                this.resetCookies();
-            });
-        }
-        
-        if (acceptBtn) {
-            acceptBtn.addEventListener('click', () => {
-                this.acceptCookiesAutomatically();
-            });
-        }
-        
-        console.log('🔍 Cookies buttons initialized');
-        console.log('🔍 Reset button found:', !!resetBtn);
-        console.log('🔍 Accept button found:', !!acceptBtn);
-    }
-    
-    resetCookies() {
-        // Clear cookies from localStorage
-        localStorage.removeItem('youtubeCookies');
-        localStorage.removeItem('cookiesPermission');
-        
-        // Reset permission flag
-        this.cookiesPermissionGranted = false;
-        
-        // Show cookies section again
-        this.showCookiesSection();
-        
-        console.log('✅ Cookies reset successfully');
-        console.log('🔍 Showing cookies section again...');
-    }
-    
     saveCookiesPermission() {
-        // Get cookie values from inputs
-        const consentCookie = document.getElementById('consentCookie').value.trim();
-        const visitorCookie = document.getElementById('visitorCookie').value.trim();
-        const yscCookie = document.getElementById('yscCookie').value.trim();
-        const loginInfoCookie = document.getElementById('loginInfoCookie').value.trim();
-        const sidCookie = document.getElementById('sidCookie').value.trim();
-        const hsidCookie = document.getElementById('hsidCookie').value.trim();
-        const ssidCookie = document.getElementById('ssidCookie').value.trim();
-        const apisidCookie = document.getElementById('apisidCookie').value.trim();
-        const sapisidCookie = document.getElementById('sapisidCookie').value.trim();
-        
-        if (!consentCookie || !visitorCookie || !yscCookie) {
-            alert('Please fill in the required cookie fields (CONSENT, VISITOR_INFO1_LIVE, YSC)');
-            return;
-        }
-        
-        // Save cookies to localStorage
-        const cookies = {
-            CONSENT: consentCookie,
-            VISITOR_INFO1_LIVE: visitorCookie,
-            YSC: yscCookie,
-            LOGIN_INFO: loginInfoCookie || null,
-            SID: sidCookie || null,
-            HSID: hsidCookie || null,
-            SSID: ssidCookie || null,
-            APISID: apisidCookie || null,
-            SAPISID: sapisidCookie || null
-        };
-        
-        localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
         localStorage.setItem('cookiesPermission', 'granted');
         this.cookiesPermissionGranted = true;
-        
-        // Send cookies to server
-        this.sendCookiesToServer(cookies);
-        
-        // Show success message
         this.showCookiesSuccess();
-        
         // Don't hide cookies section automatically - let user close it manually
         // this.hideCookiesSection();
     }
     
-    acceptCookiesAutomatically() {
-        console.log('🔍 Accepting cookies automatically from browser...');
-        
-        try {
-            // Always try to extract cookies from current page first
-            const extractedCookies = this.extractCookiesFromCurrentPage();
-            
-            if (extractedCookies && Object.keys(extractedCookies).length > 0) {
-                console.log('✅ Found cookies on current page:', extractedCookies);
-                this.saveAndUseCookies(extractedCookies);
-            } else {
-                console.log('❌ No cookies found on current page, trying alternative methods...');
-                this.tryAlternativeCookieExtraction();
-            }
-        } catch (error) {
-            console.error('❌ Error extracting cookies:', error);
-            this.showNotification('❌ Could not extract cookies automatically. Please copy them manually.', 'error');
-            this.showCookiesSection();
-        }
-    }
-    
-    extractCookiesFromCurrentPage() {
-        console.log('🔍 Extracting cookies from current page...');
-        console.log('🔍 Current URL:', window.location.href);
-        console.log('🔍 Current hostname:', window.location.hostname);
-        
-        // Try multiple methods to get cookies
-        const cookies = {};
-        
-        // Method 1: document.cookie (basic cookies)
-        try {
-            const basicCookies = document.cookie.split(';').reduce((acc, cookie) => {
-                const [name, value] = cookie.trim().split('=');
-                if (name && value) {
-                    acc[name.trim()] = value.trim();
-                }
-                return acc;
-            }, {});
-            
-            console.log('🔍 Basic cookies from document.cookie:', basicCookies);
-            Object.assign(cookies, basicCookies);
-        } catch (error) {
-            console.log('❌ Error reading basic cookies:', error);
-        }
-        
-        // Method 2: Try to access localStorage for any stored cookies
-        try {
-            const storedCookies = localStorage.getItem('youtubeCookies');
-            if (storedCookies) {
-                const parsed = JSON.parse(storedCookies);
-                console.log('🔍 Found stored cookies in localStorage:', parsed);
-                Object.assign(cookies, parsed);
-            }
-        } catch (error) {
-            console.log('❌ Error reading stored cookies:', error);
-        }
-        
-        // Method 3: Try to access sessionStorage
-        try {
-            const sessionCookies = sessionStorage.getItem('youtubeCookies');
-            if (sessionCookies) {
-                const parsed = JSON.parse(sessionCookies);
-                console.log('🔍 Found cookies in sessionStorage:', parsed);
-                Object.assign(cookies, parsed);
-            }
-        } catch (error) {
-            console.log('❌ Error reading session cookies:', error);
-        }
-        
-        console.log('🔍 All extracted cookies:', cookies);
-        
-        // Check if we have any useful cookies
-        const hasAnyCookies = Object.keys(cookies).length > 0;
-        const hasRequiredCookies = cookies.CONSENT || cookies.VISITOR_INFO1_LIVE || cookies.YSC;
-        
-        console.log('🔍 Has any cookies:', hasAnyCookies);
-        console.log('🔍 Has required cookies:', hasRequiredCookies);
-        
-        if (hasAnyCookies) {
-            return cookies;
-        }
-        
-        return null;
-    }
-    
-    tryAlternativeCookieExtraction() {
-        console.log('🔍 Trying alternative cookie extraction methods...');
-        
-        // Check if we're on YouTube domain
-        if (window.location.hostname.includes('youtube.com') || 
-            window.location.hostname.includes('youtu.be') ||
-            window.location.href.includes('youtube.com')) {
-            
-            console.log('🔍 On YouTube domain, showing manual extraction instructions...');
-            this.showNotification('🔍 You are on YouTube! However, some cookies are protected and cannot be accessed automatically. Please copy them manually from your browser.', 'info');
-            this.showCookiesSection();
-            
-            // Try to help user by showing what cookies we can see
-            this.showVisibleCookies();
+    saveAndUseCookies() {
+        const cookiesInput = document.getElementById('cookiesInput');
+        if (cookiesInput && cookiesInput.value.trim()) {
+            const cookies = cookiesInput.value.trim();
+            localStorage.setItem('youtubeCookies', cookies);
+            this.showCookiesSuccess();
+            // Don't hide cookies section automatically - let user close it manually
+            // this.hideCookiesSection();
         } else {
-            console.log('🔍 Not on YouTube domain, showing general instructions...');
-            this.showNotification('❌ Please go to YouTube.com, log in, then come back and try again.', 'error');
-            this.showCookiesSection();
-        }
-    }
-    
-    showVisibleCookies() {
-        console.log('🔍 Showing visible cookies to help user...');
-        
-        try {
-            const visibleCookies = document.cookie;
-            if (visibleCookies) {
-                console.log('🔍 Visible cookies on this page:', visibleCookies);
-                
-                // Parse and display them in a helpful way
-                const cookieList = visibleCookies.split(';').map(cookie => {
-                    const [name, value] = cookie.trim().split('=');
-                    return { name: name.trim(), value: value.trim() };
-                });
-                
-                console.log('🔍 Parsed visible cookies:', cookieList);
-                
-                // Show notification with cookie info
-                const cookieNames = cookieList.map(c => c.name).join(', ');
-                this.showNotification(`🔍 Found cookies: ${cookieNames}. Some may be protected. Please copy ALL cookies manually.`, 'info');
-            } else {
-                console.log('🔍 No visible cookies on this page');
-                this.showNotification('🔍 No visible cookies found. YouTube may be blocking access. Please copy cookies manually from F12 → Application → Cookies.', 'info');
-            }
-        } catch (error) {
-            console.log('❌ Error showing visible cookies:', error);
-            this.showNotification('🔍 Please copy cookies manually from F12 → Application → Cookies → youtube.com', 'info');
-        }
-    }
-    
-    saveAndUseCookies(cookies) {
-        console.log('💾 Saving and using cookies:', cookies);
-        
-        // Save to localStorage
-        localStorage.setItem('youtubeCookies', JSON.stringify(cookies));
-        localStorage.setItem('cookiesPermission', 'granted');
-        this.cookiesPermissionGranted = true;
-        
-        // Send to server
-        this.sendCookiesToServer(cookies);
-        
-        // Test if cookies work
-        this.testCookies(cookies);
-        
-        // Show success message
-        this.showNotification('✅ Cookies extracted and saved successfully! Testing if they work...', 'success');
-        
-        // Don't hide cookies section automatically - let user close it manually
-        // this.hideCookiesSection();
-    }
-    
-    testCookies(cookies) {
-        console.log('🧪 Testing if cookies work...');
-        
-        // Make a simple test request to see if cookies are valid
-        fetch('/test-cookies', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ cookies })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('✅ Cookie test successful:', data.message);
-                this.showNotification('✅ Cookies are working! YouTube downloads should work now!', 'success');
-            } else {
-                console.log('❌ Cookie test failed:', data.message);
-                this.showNotification('⚠️ Cookies may not be working properly. Try getting fresh cookies from YouTube.', 'warning');
-            }
-        })
-        .catch(error => {
-            console.log('❌ Cookie test error:', error);
-            this.showNotification('⚠️ Could not test cookies. They may still work for downloads.', 'warning');
-        });
-    }
-    
-    async sendCookiesToServer(cookies) {
-        try {
-            console.log('📤 Sending cookies to server...');
-            
-            const response = await fetch('/update-cookies', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ cookies })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ Cookies updated from frontend:', data.cookies);
-            } else {
-                console.error('❌ Failed to send cookies to server:', response.status);
-            }
-        } catch (error) {
-            console.error('❌ Error sending cookies to server:', error);
+            alert('Please enter your YouTube cookies');
         }
     }
     
     skipCookiesPermission() {
-        console.log('🔍 Skipping cookies permission...');
         localStorage.setItem('cookiesPermission', 'skipped');
-        this.cookiesPermissionGranted = false;
+        this.cookiesPermissionGranted = true;
+        this.showCookiesSuccess();
         // Don't hide cookies section automatically - let user close it manually
         // this.hideCookiesSection();
-        this.showCookiesInfo();
     }
     
-    showCookiesInfo() {
-        this.showNotification('⚠️ Cookies skipped. YouTube downloads may not work properly. You can always set cookies later using the "Accept Cookies" button.', 'warning');
+    enableCaptchaBypassMode() {
+        console.log('🤖 Enabling CAPTCHA Bypass Mode...');
+        
+        // Enable CAPTCHA bypass on server
+        fetch('/enable-captcha-bypass', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ CAPTCHA bypass enabled on server');
+                this.showCookiesSuccess();
+                // Don't hide cookies section automatically - let user close it manually
+                // this.hideCookiesSection();
+            }
+        })
+        .catch(error => {
+            console.error('❌ Failed to enable CAPTCHA bypass:', error);
+        });
+    }
+    
+    testCookies() {
+        console.log('🧪 Testing current cookies...');
+        const cookies = localStorage.getItem('youtubeCookies');
+        if (cookies) {
+            alert('Cookies found and stored. You can now download YouTube videos.');
+        } else {
+            alert('No cookies found. Please enter your YouTube cookies or use CAPTCHA bypass mode.');
+        }
+    }
+    
+    resetCookies() {
+        localStorage.removeItem('youtubeCookies');
+        localStorage.removeItem('cookiesPermission');
+        this.cookiesPermissionGranted = false;
+        this.showCookiesSection();
     }
     
     showCookiesSuccess() {
-        this.showNotification('✅ Cookies saved successfully! YouTube downloads should work now.', 'success');
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            cookiesSection.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 3rem; color: #4caf50; margin-bottom: 15px;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3 style="color: #2e7d32; margin-bottom: 10px;">Cookies Set Successfully!</h3>
+                    <p style="color: #2e7d32; margin-bottom: 20px;">You can now download YouTube videos.</p>
+                    <button onclick="videoDownloader.hideCookiesSection()" style="
+                        background: linear-gradient(45deg, #4caf50, #45a049);
+                        color: white;
+                        border: none;
+                        padding: 12px 25px;
+                        border-radius: 10px;
+                        font-size: 1rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    ">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            `;
+        }
     }
     
+    showCookieInstructions() {
+        const cookiesSection = document.getElementById('cookiesSection');
+        if (cookiesSection) {
+            const instructions = `
+                <div class="cookie-instructions">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>🔍 How to get YouTube cookies:</h3>
+                        <button onclick="videoDownloader.hideCookiesSection()" style="
+                            background: #ff4757;
+                            color: white;
+                            border: none;
+                            padding: 8px 15px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 0.9rem;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.background='#ff3742'" onmouseout="this.style.background='#ff4757'">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 15px;">📋 Step-by-step instructions:</h4>
+                        
+                        <ol style="color: #34495e; line-height: 1.8; text-align: left;">
+                            <li><strong>Go to YouTube</strong> and sign in to your account</li>
+                            <li><strong>Open Developer Tools</strong> (F12 or right-click → Inspect)</li>
+                            <li><strong>Go to Application/Storage tab</strong> → Cookies → https://www.youtube.com</li>
+                            <li><strong>Find these cookies:</strong> SID, HSID, SSID, APISID, SAPISID, __Secure-3PAPISID</li>
+                            <li><strong>Copy the values</strong> and paste them below</li>
+                        </ol>
+                        
+                        <div style="background: #e8f5e8; border: 1px solid #4caf50; border-radius: 8px; padding: 15px; margin-top: 15px;">
+                            <p style="color: #2e7d32; margin: 0; font-weight: 600;">
+                                💡 <strong>Quick method:</strong> Use the "Extract from Browser" button below!
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label for="cookiesInput" style="display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600;">
+                            🍪 YouTube Cookies:
+                        </label>
+                        <textarea 
+                            id="cookiesInput" 
+                            placeholder="Paste your YouTube cookies here...&#10;Example: SID=abc123; HSID=def456; SSID=ghi789; APISID=jkl012; SAPISID=mno345; __Secure-3PAPISID=pqr678"
+                            style="
+                                width: 100%;
+                                min-height: 120px;
+                                padding: 15px;
+                                border: 2px solid #e0e0e0;
+                                border-radius: 10px;
+                                font-family: 'Courier New', monospace;
+                                font-size: 0.9rem;
+                                resize: vertical;
+                                background: #fafafa;
+                            "
+                        ></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="saveCookiesBtn" style="
+                            background: linear-gradient(45deg, #4caf50, #45a049);
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 10px;
+                            font-size: 1rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-save"></i> Save & Use Cookies
+                        </button>
+                        
+                        <button id="testCookiesBtn" style="
+                            background: linear-gradient(45deg, #2196f3, #1976d2);
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 10px;
+                            font-size: 1rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-vial"></i> Test Cookies
+                        </button>
+                        
+                        <button id="noCookiesModeBtn" style="
+                            background: linear-gradient(45deg, #ff9800, #f57c00);
+                            color: white;
+                            border: none;
+                            padding: 12px 25px;
+                            border-radius: 10px;
+                            font-size: 1rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-robot"></i> CAPTCHA Bypass Mode
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                        <button id="skipCookiesBtn" style="
+                            background: #6c757d;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            font-size: 0.9rem;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-forward"></i> Skip for Now
+                        </button>
+                        
+                        <button id="resetCookiesBtn" style="
+                            background: #dc3545;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            font-size: 0.9rem;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
 
-    
     showNotification(message, type = 'info') {
         // Create notification
         const notification = document.createElement('div');
@@ -1839,124 +1777,6 @@ class VideoDownloader {
             }
         }
     }
-    
-    showCookieInstructions() {
-        // Show detailed instructions for getting cookies
-        const instructions = `
-            <div class="cookie-instructions">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>🔍 How to get YouTube cookies:</h3>
-                    <button onclick="videoDownloader.hideCookiesSection()" style="
-                        background: #ff4757; 
-                        color: white; 
-                        border: none; 
-                        padding: 8px 15px; 
-                        border-radius: 8px; 
-                        cursor: pointer; 
-                        font-size: 0.9rem;
-                        transition: all 0.3s ease;
-                    " onmouseover="this.style.background='#ff3742'" onmouseout="this.style.background='#ff4757'">
-                        <i class="fas fa-times"></i> Close
-                    </button>
-                </div>
-                <ol>
-                    <li><strong>Go to YouTube.com</strong> and make sure you're logged in</li>
-                    <li><strong>Press F12</strong> to open Developer Tools</li>
-                    <li><strong>Go to Application tab</strong> → Storage → Cookies → youtube.com</li>
-                    <li><strong>Copy these cookies:</strong>
-                        <ul>
-                            <li><code>CONSENT</code> - Required for basic access</li>
-                            <li><code>VISITOR_INFO1_LIVE</code> - Required for video access</li>
-                            <li><code>YSC</code> - Required for video access</li>
-                            <li><code>LOGIN_INFO</code> - Helps with authentication</li>
-                            <li><code>SID, HSID, SSID, APISID, SAPISID</code> - Additional security</li>
-                        </ul>
-                    </li>
-                    <li><strong>Paste them in the fields above</strong> and click "Save Cookies"</li>
-                </ol>
-                <p><strong>💡 Tip:</strong> The more cookies you provide, the better the download success rate!</p>
-            </div>
-        `;
-        
-        // Find the instructions container or create one
-        let instructionsContainer = document.querySelector('.cookie-instructions');
-        if (!instructionsContainer) {
-            const cookiesSection = document.getElementById('cookiesSection');
-            if (cookiesSection) {
-                const div = document.createElement('div');
-                div.innerHTML = instructions;
-                cookiesSection.appendChild(div);
-            }
-        }
-    }
-
-                testCurrentCookies() {
-                console.log('🧪 Testing current cookies...');
-                
-                // Get cookies from input fields
-                const cookies = {
-                    CONSENT: document.getElementById('consentCookie').value.trim(),
-                    VISITOR_INFO1_LIVE: document.getElementById('visitorCookie').value.trim(),
-                    YSC: document.getElementById('yscCookie').value.trim(),
-                    LOGIN_INFO: document.getElementById('loginInfoCookie').value.trim(),
-                    SID: document.getElementById('sidCookie').value.trim(),
-                    HSID: document.getElementById('hsidCookie').value.trim(),
-                    SSID: document.getElementById('ssidCookie').value.trim(),
-                    APISID: document.getElementById('apisidCookie').value.trim(),
-                    SAPISID: document.getElementById('sapisidCookie').value.trim()
-                };
-                
-                if (!cookies.CONSENT || !cookies.VISITOR_INFO1_LIVE || !cookies.YSC) {
-                    this.showNotification('❌ Please fill in the required cookie fields first (CONSENT, VISITOR_INFO1_LIVE, YSC)', 'error');
-                    return;
-                }
-                
-                // Show testing notification
-                this.showNotification('🧪 Testing cookies... Please wait...', 'info');
-                
-                // Test the cookies
-                this.testCookies(cookies);
-            }
-            
-            enableCaptchaBypassMode() {
-                console.log('🤖 Enabling CAPTCHA Bypass Mode...');
-                
-                // Save bypass mode to localStorage
-                localStorage.setItem('captchaBypassMode', 'enabled');
-                localStorage.setItem('cookiesPermission', 'bypass');
-                this.cookiesPermissionGranted = true;
-                
-                // Send bypass mode to server
-                this.sendCaptchaBypassToServer();
-                
-                // Show success message
-                this.showNotification('🤖 CAPTCHA Bypass Mode enabled! Downloads will use advanced bot detection evasion without cookies.', 'success');
-                
-                // Don't hide cookies section automatically - let user close it manually
-                // this.hideCookiesSection();
-            }
-            
-            async sendCaptchaBypassToServer() {
-                try {
-                    console.log('🤖 Enabling CAPTCHA bypass on server...');
-                    
-                    const response = await fetch('/enable-captcha-bypass', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ enabled: true })
-                    });
-                    
-                    if (response.ok) {
-                        console.log('✅ CAPTCHA bypass enabled on server');
-                    } else {
-                        console.error('❌ Failed to enable CAPTCHA bypass on server:', response.status);
-                    }
-                } catch (error) {
-                    console.error('❌ Error enabling CAPTCHA bypass on server:', error);
-                }
-            }
 }
 
 // Global functions that can be called from HTML
