@@ -2349,17 +2349,12 @@ body {
     border: 2px solid var(--primary-color);
     position: relative;
     z-index: 1000;
-    /* Ensure visibility when shown */
-    opacity: 1 !important;
-    visibility: visible !important;
 }
 
 /* Force display when shown */
 .cookies-section[style*="display: block"],
 .cookies-section.show {
     display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
 }
 
 .cookies-container h3 {
