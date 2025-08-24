@@ -1192,12 +1192,11 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--no-playlist',
             '--no-warnings',
             '--no-progress',
-            '--quiet',
+            '--verbose',
             // MEGA-AGGRESSIVE CAPTCHA bypass v6.0 - FORCE SUCCESS!
             '--user-agent', 'Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/118.0 Firefox/118.0',
             '--no-check-certificate',
             '--prefer-insecure',
-            '--no-check-certificates',
             '--ignore-errors',
             '--ignore-no-formats-error',
             '--no-abort-on-error',
@@ -1211,12 +1210,6 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--extractor-args', 'youtube:player_client=android',
             '--extractor-args', 'youtube:player_skip=webpage',
             '--extractor-args', 'youtube:skip=hls,dash',
-            '--extractor-args', 'youtube:player_client=web',
-            '--extractor-args', 'youtube:player_client=ios',
-            '--extractor-args', 'youtube:player_client=android_creator',
-            '--extractor-args', 'youtube:player_client=android_music',
-            '--extractor-args', 'youtube:innertube_host=studio.youtube.com',
-            '--extractor-args', 'youtube:innertube_key=AIzaSyBUPetSUmoZL-OhlxA7wSac5XinrygCqMo',
             // MEGA-AGGRESSIVE anti-CAPTCHA measures v6.0 - FORCE SUCCESS!
             '--sleep-interval', '1',
             // MEGA-AGGRESSIVE browser emulation - FORCE SUCCESS!
@@ -1253,8 +1246,6 @@ async function downloadYouTubeViaYtDlp(url, quality, format) {
             '--add-header', 'Sec-Fetch-Site:none',
             '--add-header', 'Cache-Control:max-age=0',
             // MEGA-AGGRESSIVE format forcing - FORCE SUCCESS!
-            '--extractor-args', 'generic:fallback=1',
-            '--extractor-args', 'generic:timeout=30',
             ...(format === 'mp3' ? ['--extract-audio', '--audio-format', 'mp3'] : [])
             ]);
         } else {
