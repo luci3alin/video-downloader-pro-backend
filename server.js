@@ -19,7 +19,7 @@ const TwitterDownloader = require('twitter-downloader');
 const { Vimeo } = require('@vimeo/vimeo');
 
 // YouTube API Key for fallback (all restrictions removed)
-const YOUTUBE_API_KEY = 'AIzaSyDATZtBCDsSV1Bjb8xNZmQpZBtLhTJ-htk';
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyDATZtBCDsSV1Bjb8xNZmQpZBtLhTJ-htk';
 
 // Enhanced anti-bot detection v2.0 - Timing randomization and User-Agent rotation
 
