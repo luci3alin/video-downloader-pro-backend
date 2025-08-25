@@ -21,6 +21,7 @@ const { Vimeo } = require('@vimeo/vimeo');
 // NEW: Working alternative YouTube download library
 const btchDownloader = require('btch-downloader');
 const { ytmp4 } = require('@vreden/youtube_scraper');
+const { yt } = require('yt-finder-nextgen');
 
 // NEW: Modern YouTube download alternatives (temporarily commented for debugging)
 // const play = require('play-dl');
@@ -2162,7 +2163,36 @@ async function getQualityFromAPI(url, quality) {
             // Get video info from YouTube API to understand available formats
             console.log('🔍 Getting detailed video info for quality construction...');
             
-                    // Try to get better quality from @vreden/youtube_scraper
+                    // Try to get better quality from yt-finder-nextgen (NEW WORKING LIBRARY!)
+        console.log('🔄 Attempting yt-finder-nextgen quality enhancement...');
+        
+        try {
+            console.log('🎯 Using yt-finder-nextgen for quality selection...');
+            const ytFinderResult = await yt(url);
+            
+            if (ytFinderResult && ytFinderResult.title && ytFinderResult.downloadLink) {
+                console.log('✅ yt-finder-nextgen found video info');
+                console.log('📺 Title:', ytFinderResult.title);
+                console.log('👤 Channel:', ytFinderResult.channel);
+                console.log('🎯 Requested quality:', quality);
+                console.log('🔗 Download link:', ytFinderResult.downloadLink);
+                
+                // yt-finder-nextgen provides direct download links
+                if (ytFinderResult.downloadLink) {
+                    return {
+                        url: ytFinderResult.downloadLink,
+                        quality: quality,
+                        method: 'yt-finder-nextgen',
+                        note: `Downloaded at ${quality} via yt-finder-nextgen`,
+                        metadata: ytFinderResult
+                    };
+                }
+            }
+        } catch (ytFinderError) {
+            console.log('⚠️ yt-finder-nextgen enhancement failed:', ytFinderError.message);
+        }
+        
+        // Try to get better quality from @vreden/youtube_scraper (fallback)
         console.log('🔄 Attempting @vreden/youtube_scraper quality enhancement...');
         
         try {
