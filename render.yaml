@@ -15,7 +15,7 @@ services:
       - key: PORT
         value: 10000
       - key: YOUTUBE_API_KEY
-        sync: false  # Set this manually in Render dashboard
+        value: AIzaSyDATZtBCDsSV1Bjb8xNZmQpZBtLhTJ-htk
       - key: PINCHFLAT_URL
         value: https://pinchflat-service.onrender.com  # Will be set after Pinchflat deploys
     
