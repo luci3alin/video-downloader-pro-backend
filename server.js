@@ -23,8 +23,8 @@ const btchDownloader = require('btch-downloader');
 const { ytmp4 } = require('@vreden/youtube_scraper');
 const { yt } = require('yt-finder-nextgen');
 
-// NEW: Hybrid Quality Selection System
-const { EnhancedHybridDownloader } = require('./enhanced-hybrid-system');
+// NEW: Final Enhanced YouTube Download System
+const { FinalEnhancedYouTubeDownloader } = require('./final-enhanced-youtube-system');
 
 // NEW: Modern YouTube download alternatives (temporarily commented for debugging)
 // const play = require('play-dl');
@@ -918,7 +918,7 @@ app.post('/api/quality-options', async (req, res) => {
 
         console.log('🎯 Getting quality options for:', url);
         
-        const downloader = new EnhancedHybridDownloader();
+        const downloader = new FinalEnhancedYouTubeDownloader();
         const qualityOptions = await downloader.getQualityOptions(url);
         
         console.log('✅ Quality options retrieved successfully');
@@ -959,7 +959,7 @@ app.post('/api/download-with-quality', async (req, res) => {
 
         console.log('🎯 Downloading with specific quality:', quality, format);
         
-        const downloader = new EnhancedHybridDownloader();
+        const downloader = new FinalEnhancedYouTubeDownloader();
         const result = await downloader.downloadWithQuality(url, quality, format);
         
         if (result.success) {
@@ -1808,11 +1808,11 @@ async function getYouTubeInfoViaYtDlp(url) {
     }
 }
 
-// Main YouTube download function - NOW USING ENHANCED HYBRID SYSTEM AS PRIMARY!
+// Main YouTube download function - NOW USING FINAL ENHANCED SYSTEM AS PRIMARY!
 async function downloadYouTube(url, quality, format) {
     try {
-        console.log('📥 DOWNLOAD START -', quality, format, '- ENHANCED HYBRID SYSTEM PRIMARY + FALLBACKS');
-        console.log('🚀 Attempting download with EnhancedHybridDownloader as primary method...');
+        console.log('📥 DOWNLOAD START -', quality, format, '- FINAL ENHANCED SYSTEM PRIMARY + FALLBACKS');
+        console.log('🚀 Attempting download with FinalEnhancedYouTubeDownloader as primary method...');
         
         // Extract video ID
         const videoId = extractYouTubeVideoId(url);
@@ -1822,74 +1822,74 @@ async function downloadYouTube(url, quality, format) {
         
         console.log('🔍 Video ID extracted:', videoId);
         
-        // 🥇 STEP 1: Try EnhancedHybridDownloader (NEW HYBRID SYSTEM)
+        // 🥇 STEP 1: Try FinalEnhancedYouTubeDownloader (NEW FINAL SYSTEM)
         try {
-            console.log('🥇 STEP 1: Trying EnhancedHybridDownloader (NEW HYBRID SYSTEM)...');
+            console.log('🥇 STEP 1: Trying FinalEnhancedYouTubeDownloader (NEW FINAL SYSTEM)...');
             
-            const downloader = new EnhancedHybridDownloader();
+            const downloader = new FinalEnhancedYouTubeDownloader();
             
-            // If specific quality is requested, use the hybrid system
+            // If specific quality is requested, use the final enhanced system
             if (quality && quality !== 'auto' && quality !== 'best') {
-                console.log('🎯 Specific quality requested, using hybrid quality selection...');
+                console.log('🎯 Specific quality requested, using final enhanced quality selection...');
                 try {
                     const result = await downloader.downloadWithQuality(url, quality, format);
                     if (result.success) {
-                        console.log('✅ SUCCESS: Hybrid quality download succeeded');
-                        console.log('🎯 Hybrid result:', result);
+                                                console.log('✅ SUCCESS: Final enhanced quality download succeeded');
+                        console.log('🎯 Final enhanced result:', result);
                         
                         // For now, return success info
                         // In the future, this would handle the actual file download
                         return {
                             success: true,
-                            message: `Hybrid download successful via ${result.source}`,
+                            message: `Final enhanced download successful via ${result.source}`,
                             quality: result.quality,
                             format: result.format,
                             antiBot: result.antiBot,
                             source: result.source
                         };
                     } else {
-                        console.log('⚠️ Hybrid quality download failed, falling back to btchDownloader');
+                        console.log('⚠️ Final enhanced quality download failed, falling back to btchDownloader');
                     }
-                } catch (hybridError) {
-                    console.log('⚠️ Hybrid quality download failed, falling back to btchDownloader');
+                } catch (finalEnhancedError) {
+                    console.log('⚠️ Final enhanced quality download failed, falling back to btchDownloader');
                 }
             }
             
             // Try to get quality options first
             try {
-                console.log('🔍 Getting quality options via hybrid system...');
+                console.log('🔍 Getting quality options via final enhanced system...');
                 const qualityOptions = await downloader.getQualityOptions(url);
                 console.log('✅ Quality options retrieved:', qualityOptions);
             } catch (optionsError) {
                 console.log('⚠️ Quality options failed, continuing with download...');
             }
             
-            // Try direct download with hybrid system
+            // Try direct download with final enhanced system
             try {
                 const result = await downloader.downloadWithQuality(url, quality || '720p', format || 'mp4');
                 if (result.success) {
-                    console.log('✅ SUCCESS: Hybrid system download succeeded');
+                    console.log('✅ SUCCESS: Final enhanced system download succeeded');
                     return {
                         success: true,
-                        message: `Hybrid download successful via ${result.source}`,
-                        quality: result.quality,
-                        format: result.format,
-                        antiBot: result.antiBot,
-                        source: result.source
-                    };
+                            message: `Final enhanced download successful via ${result.source}`,
+                            quality: result.quality,
+                            format: result.format,
+                            antiBot: result.antiBot,
+                            source: result.source
+                        };
+                    }
+                } catch (finalEnhancedDownloadError) {
+                    console.log('⚠️ Final enhanced system download failed, falling back to btchDownloader');
                 }
-            } catch (hybridDownloadError) {
-                console.log('⚠️ Hybrid system download failed, falling back to btchDownloader');
-            }
-            
-            // Fallback to btchDownloader
-            const downloadStream = await downloadYouTubeViaBtchDownloader(url, quality, format);
-            console.log('✅ SUCCESS: btchDownloader fallback succeeded');
-            return downloadStream;
-            
-        } catch (hybridError) {
-            console.log('❌ STEP 1 FAILED: Hybrid system failed');
-            console.log('🔄 FALLBACK: Moving to btchDownloader method...');
+                
+                // Fallback to btchDownloader
+                const downloadStream = await downloadYouTubeViaBtchDownloader(url, quality, format);
+                console.log('✅ SUCCESS: btchDownloader fallback succeeded');
+                return downloadStream;
+                
+            } catch (finalEnhancedError) {
+                console.log('❌ STEP 1 FAILED: Final enhanced system failed');
+                console.log('🔄 FALLBACK: Moving to btchDownloader method...');
             
             // 🥈 STEP 2: Try btchDownloader (WORKING ALTERNATIVE)
             try {
