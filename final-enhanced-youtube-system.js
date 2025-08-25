@@ -167,14 +167,23 @@ class FinalEnhancedYouTubeDownloader {
                 .filter(([key, lib]) => lib.working)
                 .sort((a, b) => a[1].priority - b[1].priority);
             
+            // Track failed libraries to avoid retrying them
+            const failedLibraries = new Set();
+            
             for (const [key, lib] of workingLibraries) {
+                // Skip libraries that have failed multiple times
+                if (failedLibraries.has(key)) {
+                    console.log(`⏭️ Skipping ${lib.name} (previously failed)`);
+                    continue;
+                }
+                
                 try {
                     console.log(`🎯 Trying ${lib.name} for quality options...`);
                     
                     let qualityOptions;
                     
                     if (key === 'ybdYtdlCore') {
-                        qualityOptions = await this.retryWithBackoff(() => this.getYbdYtdlCoreQualityOptions(url), lib.name);
+                        qualityOptions = await this.retryWithBackoff(() => this.getYbdYtdlCoreQualityOptions(url), lib.name, 3); // Reduced retries for problematic library
                     } else if (key === 'ruHendYtdlCore') {
                         qualityOptions = await this.retryWithBackoff(() => this.getRuHendYtdlCoreQualityOptions(url), lib.name);
                     } else if (key === 'hybridYtdl') {
@@ -204,6 +213,14 @@ class FinalEnhancedYouTubeDownloader {
                     if (error.message.includes('bot') || error.message.includes('403') || error.message.includes('Forbidden')) {
                         console.log(`🛡️ Bot detection detected for ${lib.name}, trying recovery...`);
                         await this.delay(this.getRandomDelay() * 2); // Longer delay
+                    }
+                    
+                    // Mark library as failed if it's consistently problematic
+                    if (error.message.includes('No valid getInfo method found') || 
+                        error.message.includes('is not a function') ||
+                        error.message.includes('is not a constructor')) {
+                        failedLibraries.add(key);
+                        console.log(`🚫 ${lib.name} marked as problematic, will skip in future attempts`);
                     }
                     
                     continue;
@@ -247,6 +264,12 @@ class FinalEnhancedYouTubeDownloader {
         try {
             const ybdYtdlCore = require('@ybd-project/ytdl-core');
             
+            // Debug: Log the library structure
+            console.log('🔍 YBD Library structure:', Object.keys(ybdYtdlCore));
+            if (ybdYtdlCore.default) {
+                console.log('🔍 YBD default keys:', Object.keys(ybdYtdlCore.default));
+            }
+            
             // Try different ways to access the library
             let videoInfo;
             if (ybdYtdlCore.default && ybdYtdlCore.default.getInfo) {
@@ -255,8 +278,28 @@ class FinalEnhancedYouTubeDownloader {
                 videoInfo = await ybdYtdlCore.YtdlCore.getInfo(url);
             } else if (ybdYtdlCore.getInfo) {
                 videoInfo = await ybdYtdlCore.getInfo(url);
+            } else if (ybdYtdlCore.default && ybdYtdlCore.default.YtdlCore && ybdYtdlCore.default.YtdlCore.getInfo) {
+                videoInfo = await ybdYtdlCore.default.YtdlCore.getInfo(url);
+            } else if (ybdYtdlCore.default && ybdYtdlCore.default.default && ybdYtdlCore.default.default.getInfo) {
+                videoInfo = await ybdYtdlCore.default.default.getInfo(url);
             } else {
-                throw new Error('No valid getInfo method found');
+                // Try to find any method that might work
+                const allKeys = this.getAllNestedKeys(ybdYtdlCore);
+                const getInfoMethods = allKeys.filter(key => key.includes('getInfo') || key.includes('getVideoInfo'));
+                console.log('🔍 Available getInfo-like methods:', getInfoMethods);
+                
+                if (getInfoMethods.length > 0) {
+                    // Try the first available method
+                    const methodPath = getInfoMethods[0];
+                    const method = this.getNestedValue(ybdYtdlCore, methodPath);
+                    if (typeof method === 'function') {
+                        videoInfo = await method(url);
+                    } else {
+                        throw new Error(`Found method ${methodPath} but it's not a function`);
+                    }
+                } else {
+                    throw new Error('No valid getInfo method found');
+                }
             }
             
             const qualities = [];
@@ -290,6 +333,27 @@ class FinalEnhancedYouTubeDownloader {
         } catch (error) {
             throw new Error(`YBD-YTDL-Core failed: ${error.message}`);
         }
+    }
+    
+    // Helper method to get all nested keys
+    getAllNestedKeys(obj, prefix = '') {
+        const keys = [];
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                const fullKey = prefix ? `${prefix}.${key}` : key;
+                keys.push(fullKey);
+                
+                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                    keys.push(...this.getAllNestedKeys(obj[key], fullKey));
+                }
+            }
+        }
+        return keys;
+    }
+    
+    // Helper method to get nested value
+    getNestedValue(obj, path) {
+        return path.split('.').reduce((current, key) => current && current[key], obj);
     }
     
     // RuHend-YTDL-Core implementation (if available)
