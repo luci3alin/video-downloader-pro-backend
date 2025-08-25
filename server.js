@@ -19,7 +19,7 @@ const TwitterDownloader = require('twitter-downloader');
 const { Vimeo } = require('@vimeo/vimeo');
 
 // NEW: Working alternative YouTube download library
-const vredenScraper = require('@vreden/youtube_scraper');
+const btchDownloader = require('btch-downloader');
 
 // NEW: Modern YouTube download alternatives (temporarily commented for debugging)
 // const play = require('play-dl');
@@ -1694,11 +1694,11 @@ async function getYouTubeInfoViaYtDlp(url) {
     }
 }
 
-// Main YouTube download function - NOW USING VREDEN SCRAPER AS PRIMARY!
+// Main YouTube download function - NOW USING BTCH-DOWNLOADER AS PRIMARY!
 async function downloadYouTube(url, quality, format) {
     try {
-        console.log('📥 DOWNLOAD START -', quality, format, '- VREDEN SCRAPER PRIMARY + ALTERNATIVE METHODS (NO yt-dlp, NO ytdl-core)');
-        console.log('🚀 Attempting download with vredenScraper as primary method...');
+        console.log('📥 DOWNLOAD START -', quality, format, '- BTCH-DOWNLOADER PRIMARY + ALTERNATIVE METHODS (NO yt-dlp, NO ytdl-core)');
+        console.log('🚀 Attempting download with btchDownloader as primary method...');
         
         // Extract video ID
         const videoId = extractYouTubeVideoId(url);
@@ -1708,16 +1708,16 @@ async function downloadYouTube(url, quality, format) {
         
         console.log('🔍 Video ID extracted:', videoId);
         
-        // 🥇 STEP 1: Try vredenScraper (NEW WORKING ALTERNATIVE)
+        // 🥇 STEP 1: Try btchDownloader (NEW WORKING ALTERNATIVE)
         try {
-            console.log('🥇 STEP 1: Trying vredenScraper (NEW WORKING ALTERNATIVE)...');
+            console.log('🥇 STEP 1: Trying btchDownloader (NEW WORKING ALTERNATIVE)...');
             
-            const downloadStream = await downloadYouTubeViaVredenScraper(url, quality, format);
-            console.log('✅ SUCCESS: vredenScraper method succeeded');
+            const downloadStream = await downloadYouTubeViaBtchDownloader(url, quality, format);
+            console.log('✅ SUCCESS: btchDownloader method succeeded');
             return downloadStream;
             
-        } catch (vredenError) {
-            console.log('❌ STEP 1 FAILED: vredenScraper method failed');
+        } catch (btchError) {
+            console.log('❌ STEP 1 FAILED: btchDownloader method failed');
             console.log('🔄 FALLBACK: Moving to HTML scraping method...');
             
             // 🥈 STEP 2: Try direct HTML scraping method
@@ -1754,7 +1754,7 @@ async function downloadYouTube(url, quality, format) {
                         
                     } catch (httpError) {
                         console.log('❌ STEP 4 FAILED: Alternative HTTP method failed');
-                        throw new Error(`All alternative methods failed: vredenScraper, HTML scraping, API v3, HTTP method`);
+                        throw new Error(`All alternative methods failed: btchDownloader, HTML scraping, API v3, HTTP method`);
                     }
                 }
             }
@@ -1766,11 +1766,11 @@ async function downloadYouTube(url, quality, format) {
     }
 }
 
-// NEW: Download YouTube video via vredenScraper (WORKING ALTERNATIVE)
-async function downloadYouTubeViaVredenScraper(url, quality, format) {
+// NEW: Download YouTube video via btchDownloader (WORKING ALTERNATIVE)
+async function downloadYouTubeViaBtchDownloader(url, quality, format) {
     try {
-        console.log('🚀 === VREDEN SCRAPER DOWNLOAD METHOD STARTED ===');
-        console.log('🔍 vredenScraper method: Starting...');
+        console.log('🚀 === BTCH-DOWNLOADER DOWNLOAD METHOD STARTED ===');
+        console.log('🔍 btchDownloader method: Starting...');
         console.log('📝 Input parameters - URL:', url, 'Quality:', quality, 'Format:', format);
         
         // Extract video ID from URL
@@ -1783,65 +1783,79 @@ async function downloadYouTubeViaVredenScraper(url, quality, format) {
         
         console.log('✅ Video ID extracted successfully:', videoId);
         
-        // Use vredenScraper based on format
-        let result;
-        if (format === 'mp3') {
-            console.log('🎵 Using vredenScraper.ytmp3 for audio download...');
-            result = await vredenScraper.ytmp3(url);
-        } else {
-            console.log('📹 Using vredenScraper.ytmp4 for video download...');
-            result = await vredenScraper.ytmp4(url);
+        // Use btchDownloader to get video info
+        console.log('🔍 Getting video info via btchDownloader.youtube...');
+        const result = await btchDownloader.youtube(url);
+        
+        if (!result) {
+            throw new Error('btchDownloader failed to get video info');
         }
         
-        if (!result || !result.status) {
-            throw new Error('vredenScraper failed to get download info');
-        }
-        
-        console.log('✅ vredenScraper succeeded!');
+        console.log('✅ btchDownloader succeeded!');
         console.log('📊 Result structure:', Object.keys(result));
+        console.log('📺 Title:', result.title);
+        console.log('👤 Author:', result.author);
         
-        if (result.download && result.download.url) {
-            console.log('🔗 Download URL found:', result.download.url.substring(0, 100) + '...');
-            
-            // Download the file using axios
-            console.log('📥 Starting download via axios...');
-            const response = await axios({
-                method: 'GET',
-                url: result.download.url,
-                responseType: 'stream',
-                headers: {
-                    'User-Agent': getRandomUserAgent(),
-                    'Referer': 'https://www.youtube.com/',
-                    'Origin': 'https://www.youtube.com'
-                },
-                timeout: 30000
-            });
-            
-            console.log('✅ Download stream created successfully');
-            console.log('📊 Response headers:', response.headers);
-            
-            // Create a readable stream that can be returned
-            const downloadStream = response.data;
-            
-            // Add metadata to the stream
-            downloadStream.videoInfo = {
-                title: result.download.title || 'Unknown Title',
-                duration: result.download.duration || 'Unknown',
-                quality: result.download.quality || quality,
-                format: format,
-                platform: 'YouTube',
-                method: 'vredenScraper'
-            };
-            
-            return downloadStream;
-            
+        // Get download URL based on format
+        let downloadUrl;
+        if (format === 'mp3') {
+            if (result.mp3) {
+                downloadUrl = result.mp3;
+                console.log('🎵 MP3 download URL found');
+            } else {
+                throw new Error('No MP3 download URL available');
+            }
         } else {
-            throw new Error('No download URL found in vredenScraper result');
+            if (result.mp4) {
+                downloadUrl = result.mp4;
+                console.log('📹 MP4 download URL found');
+            } else {
+                throw new Error('No MP4 download URL available');
+            }
         }
+        
+        if (!downloadUrl) {
+            throw new Error('No download URL found in btchDownloader result');
+        }
+        
+        console.log('🔗 Download URL found:', downloadUrl.substring(0, 100) + '...');
+        
+        // Download the file using axios
+        console.log('📥 Starting download via axios...');
+        const response = await axios({
+            method: 'GET',
+            url: downloadUrl,
+            responseType: 'stream',
+            headers: {
+                'User-Agent': getRandomUserAgent(),
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com'
+            },
+            timeout: 30000
+        });
+        
+        console.log('✅ Download stream created successfully');
+        console.log('📊 Response headers:', response.headers);
+        
+        // Create a readable stream that can be returned
+        const downloadStream = response.data;
+        
+        // Add metadata to the stream
+        downloadStream.videoInfo = {
+            title: result.title || 'Unknown Title',
+            author: result.author || 'Unknown Author',
+            thumbnail: result.thumbnail || null,
+            quality: quality,
+            format: format,
+            platform: 'YouTube',
+            method: 'btchDownloader'
+        };
+        
+        return downloadStream;
         
     } catch (error) {
-        console.error('❌ vredenScraper download method failed:', error);
-        throw new Error(`vredenScraper method failed: ${error.message}`);
+        console.error('❌ btchDownloader download method failed:', error);
+        throw new Error(`btchDownloader method failed: ${error.message}`);
     }
 }
 
