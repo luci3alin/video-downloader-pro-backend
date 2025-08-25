@@ -23,6 +23,9 @@ const btchDownloader = require('btch-downloader');
 const { ytmp4 } = require('@vreden/youtube_scraper');
 const { yt } = require('yt-finder-nextgen');
 
+// NEW: Hybrid Quality Selection System
+const { EnhancedHybridDownloader } = require('./enhanced-hybrid-system');
+
 // NEW: Modern YouTube download alternatives (temporarily commented for debugging)
 // const play = require('play-dl');
 // const zulYtdl = require('@zulproject/ytdl');
@@ -877,6 +880,103 @@ app.post('/api/download-playlist', async (req, res) => {
 
     } catch (error) {
         console.error('Playlist download error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// ===== HYBRID QUALITY SELECTION SYSTEM =====
+app.post('/api/quality-options', async (req, res) => {
+    try {
+        const { url } = req.body;
+        
+        if (!url) {
+            return res.status(400).json({ success: false, error: 'URL is required' });
+        }
+
+        // Only support YouTube URLs for quality selection
+        if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Quality selection currently only supports YouTube URLs' 
+            });
+        }
+
+        console.log('🎯 Getting quality options for:', url);
+        
+        const downloader = new EnhancedHybridDownloader();
+        const qualityOptions = await downloader.getQualityOptions(url);
+        
+        console.log('✅ Quality options retrieved successfully');
+        
+        res.json({
+            success: true,
+            data: qualityOptions
+        });
+
+    } catch (error) {
+        console.error('Quality options error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+app.post('/api/download-with-quality', async (req, res) => {
+    try {
+        const { url, quality, format } = req.body;
+        
+        if (!url) {
+            return res.status(400).json({ success: false, error: 'URL is required' });
+        }
+
+        if (!quality || !format) {
+            return res.status(400).json({ success: false, error: 'Quality and format are required' });
+        }
+
+        // Only support YouTube URLs for quality selection
+        if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Quality selection currently only supports YouTube URLs' 
+            });
+        }
+
+        console.log('🎯 Downloading with specific quality:', quality, format);
+        
+        const downloader = new EnhancedHybridDownloader();
+        const result = await downloader.downloadWithQuality(url, quality, format);
+        
+        if (result.success) {
+            console.log('✅ Quality download completed successfully');
+            
+            // Set headers for download
+            res.setHeader('Content-Type', `video/${format}`);
+            res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+            res.setHeader('X-Download-Library', result.source);
+            res.setHeader('X-Download-Quality', result.quality);
+            res.setHeader('X-Download-Format', result.format);
+            res.setHeader('X-Anti-Bot', result.antiBot ? 'Enabled' : 'Disabled');
+            
+            // For now, return the result info
+            // In the future, this would stream the actual file
+            res.json({
+                success: true,
+                data: result
+            });
+        } else {
+            console.log('❌ Quality download failed:', result.message);
+            res.status(500).json({ 
+                success: false, 
+                error: result.message 
+            });
+        }
+
+    } catch (error) {
+        console.error('Quality download error:', error);
         res.status(500).json({ 
             success: false, 
             error: error.message 
