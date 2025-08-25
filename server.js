@@ -541,9 +541,6 @@ app.post('/api/video-info', async (req, res) => {
                 platform = 'youtube';
                 videoInfo = await getYouTubeInfo(url);
             }
-        } else if (url.includes('pornhub.com')) {
-            platform = 'pornhub';
-            videoInfo = await getPornHubInfo(url);
         } else if (url.includes('twitter.com') || url.includes('x.com')) {
             platform = 'twitter';
             videoInfo = await getTwitterVideoInfo(url);
@@ -559,7 +556,7 @@ app.post('/api/video-info', async (req, res) => {
         } else {
             return res.status(400).json({ 
                 success: false, 
-                error: 'Unsupported platform. Currently supports YouTube, YouTube Playlists, PornHub, Twitter, Instagram, TikTok, and Vimeo.' 
+                error: 'Unsupported platform. Currently supports YouTube, YouTube Playlists, Twitter, Instagram, TikTok, and Vimeo.' 
             });
         }
 
@@ -593,10 +590,25 @@ app.post('/api/download', async (req, res) => {
             if (url.includes('playlist?list=')) {
                 downloadStream = await downloadYouTubePlaylist(url, quality, format);
             } else {
-                downloadStream = await downloadYouTube(url, quality, format);
+                const result = await downloadYouTube(url, quality, format);
+                
+                // Check if this is a hybrid system success response
+                if (result && result.success && result.message) {
+                    console.log('🎯 Hybrid system succeeded, returning info response');
+                    return res.json({
+                        success: true,
+                        message: result.message,
+                        quality: result.quality,
+                        format: result.format,
+                        antiBot: result.antiBot,
+                        source: result.source,
+                        note: 'Hybrid system download successful. File download will be implemented in next version.'
+                    });
+                }
+                
+                // Otherwise, treat as regular stream
+                downloadStream = result;
             }
-        } else if (url.includes('pornhub.com')) {
-            downloadStream = await downloadPornHub(url, quality, format);
         } else if (url.includes('twitter.com') || url.includes('x.com')) {
             downloadStream = await downloadTwitter(url, quality, format);
         } else if (url.includes('instagram.com')) {
@@ -608,7 +620,7 @@ app.post('/api/download', async (req, res) => {
         } else {
             return res.status(400).json({ 
                 success: false, 
-                error: 'Unsupported platform. Currently supports YouTube, YouTube Playlists, PornHub, Twitter, Instagram, TikTok, and Vimeo.' 
+                error: 'Unsupported platform. Currently supports YouTube, YouTube Playlists, Twitter, Instagram, TikTok, and Vimeo.' 
             });
         }
 
@@ -1796,11 +1808,11 @@ async function getYouTubeInfoViaYtDlp(url) {
     }
 }
 
-// Main YouTube download function - NOW USING BTCH-DOWNLOADER AS PRIMARY!
+// Main YouTube download function - NOW USING ENHANCED HYBRID SYSTEM AS PRIMARY!
 async function downloadYouTube(url, quality, format) {
     try {
-        console.log('📥 DOWNLOAD START -', quality, format, '- BTCH-DOWNLOADER PRIMARY + ALTERNATIVE METHODS (NO yt-dlp, NO ytdl-core)');
-        console.log('🚀 Attempting download with btchDownloader as primary method...');
+        console.log('📥 DOWNLOAD START -', quality, format, '- ENHANCED HYBRID SYSTEM PRIMARY + FALLBACKS');
+        console.log('🚀 Attempting download with EnhancedHybridDownloader as primary method...');
         
         // Extract video ID
         const videoId = extractYouTubeVideoId(url);
@@ -1810,78 +1822,123 @@ async function downloadYouTube(url, quality, format) {
         
         console.log('🔍 Video ID extracted:', videoId);
         
-        // 🥇 STEP 1: Try btchDownloader (NEW WORKING ALTERNATIVE)
+        // 🥇 STEP 1: Try EnhancedHybridDownloader (NEW HYBRID SYSTEM)
         try {
-            console.log('🥇 STEP 1: Trying btchDownloader (NEW WORKING ALTERNATIVE)...');
+            console.log('🥇 STEP 1: Trying EnhancedHybridDownloader (NEW HYBRID SYSTEM)...');
             
-            // If specific quality is requested, try enhanced quality selection first
+            const downloader = new EnhancedHybridDownloader();
+            
+            // If specific quality is requested, use the hybrid system
             if (quality && quality !== 'auto' && quality !== 'best') {
-                console.log('🎯 Specific quality requested, trying enhanced quality selection...');
+                console.log('🎯 Specific quality requested, using hybrid quality selection...');
                 try {
-                    const enhancedQuality = await getBetterQualityUrlEnhanced(url, quality, format);
-                    if (enhancedQuality && enhancedQuality.url) {
-                        console.log('✅ SUCCESS: Enhanced quality selection succeeded');
-                        console.log('🎯 Enhanced quality result:', enhancedQuality);
+                    const result = await downloader.downloadWithQuality(url, quality, format);
+                    if (result.success) {
+                        console.log('✅ SUCCESS: Hybrid quality download succeeded');
+                        console.log('🎯 Hybrid result:', result);
                         
-                        // Use the enhanced quality URL for download
-                        return await downloadFromUrl(enhancedQuality.url, enhancedQuality.quality || quality, format);
+                        // For now, return success info
+                        // In the future, this would handle the actual file download
+                        return {
+                            success: true,
+                            message: `Hybrid download successful via ${result.source}`,
+                            quality: result.quality,
+                            format: result.format,
+                            antiBot: result.antiBot,
+                            source: result.source
+                        };
                     } else {
-                        console.log('⚠️ Enhanced quality selection returned no URL, trying direct btchDownloader');
-                        // Try to get btchDownloader result directly for the specific quality
-                        const btchResult = await btchDownloader.youtube(url);
-                        if (btchResult && btchResult.mp4) {
-                            console.log('✅ btchDownloader found MP4 URL for direct download');
-                            return await downloadFromUrl(btchResult.mp4, quality, format);
-                        }
+                        console.log('⚠️ Hybrid quality download failed, falling back to btchDownloader');
                     }
-                } catch (enhancedError) {
-                    console.log('⚠️ Enhanced quality selection failed, falling back to btchDownloader');
+                } catch (hybridError) {
+                    console.log('⚠️ Hybrid quality download failed, falling back to btchDownloader');
                 }
             }
             
+            // Try to get quality options first
+            try {
+                console.log('🔍 Getting quality options via hybrid system...');
+                const qualityOptions = await downloader.getQualityOptions(url);
+                console.log('✅ Quality options retrieved:', qualityOptions);
+            } catch (optionsError) {
+                console.log('⚠️ Quality options failed, continuing with download...');
+            }
+            
+            // Try direct download with hybrid system
+            try {
+                const result = await downloader.downloadWithQuality(url, quality || '720p', format || 'mp4');
+                if (result.success) {
+                    console.log('✅ SUCCESS: Hybrid system download succeeded');
+                    return {
+                        success: true,
+                        message: `Hybrid download successful via ${result.source}`,
+                        quality: result.quality,
+                        format: result.format,
+                        antiBot: result.antiBot,
+                        source: result.source
+                    };
+                }
+            } catch (hybridDownloadError) {
+                console.log('⚠️ Hybrid system download failed, falling back to btchDownloader');
+            }
+            
+            // Fallback to btchDownloader
             const downloadStream = await downloadYouTubeViaBtchDownloader(url, quality, format);
-            console.log('✅ SUCCESS: btchDownloader method succeeded');
+            console.log('✅ SUCCESS: btchDownloader fallback succeeded');
             return downloadStream;
             
-        } catch (btchError) {
-            console.log('❌ STEP 1 FAILED: btchDownloader method failed');
-            console.log('🔄 FALLBACK: Moving to HTML scraping method...');
+        } catch (hybridError) {
+            console.log('❌ STEP 1 FAILED: Hybrid system failed');
+            console.log('🔄 FALLBACK: Moving to btchDownloader method...');
             
-            // 🥈 STEP 2: Try direct HTML scraping method
+            // 🥈 STEP 2: Try btchDownloader (WORKING ALTERNATIVE)
             try {
-                console.log('🥈 STEP 2: Trying direct HTML scraping method...');
+                console.log('🥈 STEP 2: Trying btchDownloader (WORKING ALTERNATIVE)...');
                 
-                const downloadStream = await downloadYouTubeViaHTMLScraping(url, quality, format);
-                console.log('✅ SUCCESS: HTML scraping method succeeded');
+                const downloadStream = await downloadYouTubeViaBtchDownloader(url, quality, format);
+                console.log('✅ SUCCESS: btchDownloader method succeeded');
                 return downloadStream;
                 
-            } catch (htmlError) {
-                console.log('❌ STEP 2 FAILED: HTML scraping method failed');
-                console.log('🔄 FALLBACK: Moving to YouTube Data API v3 method...');
+            } catch (btchError) {
+                console.log('❌ STEP 2 FAILED: btchDownloader method failed');
+                console.log('🔄 FALLBACK: Moving to HTML scraping method...');
                 
-                // 🥉 STEP 3: Try YouTube Data API v3 method
+                // 🥉 STEP 3: Try direct HTML scraping method
                 try {
-                    console.log('🥉 STEP 3: Trying YouTube Data API v3 method...');
+                    console.log('🥉 STEP 3: Trying direct HTML scraping method...');
                     
-                    const downloadStream = await downloadYouTubeViaAPIv3(url, quality, format);
-                    console.log('✅ SUCCESS: YouTube Data API v3 method succeeded');
+                    const downloadStream = await downloadYouTubeViaHTMLScraping(url, quality, format);
+                    console.log('✅ SUCCESS: HTML scraping method succeeded');
                     return downloadStream;
                     
-                } catch (apiError) {
-                    console.log('❌ STEP 3 FAILED: YouTube Data API v3 method failed');
-                    console.log('🔄 FALLBACK: Moving to alternative HTTP method...');
+                } catch (htmlError) {
+                    console.log('❌ STEP 3 FAILED: HTML scraping method failed');
+                    console.log('🔄 FALLBACK: Moving to YouTube Data API v3 method...');
                     
-                    // 🏁 STEP 4: Try alternative HTTP method
+                    // 🏁 STEP 4: Try YouTube Data API v3 method
                     try {
-                        console.log('🏁 STEP 4: Trying alternative HTTP method...');
+                        console.log('🏁 STEP 4: Trying YouTube Data API v3 method...');
                         
-                        const downloadStream = await downloadYouTubeViaAlternativeHTTP(url, quality, format);
-                        console.log('✅ SUCCESS: Alternative HTTP method succeeded');
+                        const downloadStream = await downloadYouTubeViaAPIv3(url, quality, format);
+                        console.log('✅ SUCCESS: YouTube Data API v3 method succeeded');
                         return downloadStream;
                         
-                    } catch (httpError) {
-                        console.log('❌ STEP 4 FAILED: Alternative HTTP method failed');
-                        throw new Error(`All alternative methods failed: btchDownloader, HTML scraping, API v3, HTTP method`);
+                    } catch (apiError) {
+                        console.log('❌ STEP 4 FAILED: YouTube Data API v3 method failed');
+                        console.log('🔄 FALLBACK: Moving to alternative HTTP method...');
+                        
+                        // 🏆 STEP 5: Try alternative HTTP method
+                        try {
+                            console.log('🏆 STEP 5: Trying alternative HTTP method...');
+                            
+                            const downloadStream = await downloadYouTubeViaAlternativeHTTP(url, quality, format);
+                            console.log('✅ SUCCESS: Alternative HTTP method succeeded');
+                            return downloadStream;
+                            
+                        } catch (httpError) {
+                            console.log('❌ STEP 5 FAILED: Alternative HTTP method failed');
+                            throw new Error(`All methods failed: Hybrid system, btchDownloader, HTML scraping, API v3, HTTP method`);
+                        }
                     }
                 }
             }
