@@ -133,25 +133,25 @@ def main():
 
     args = parser.parse_args()
     
-            if args.action == 'qualities':
-            # Get available qualities
-            print(f"DEBUG: Getting qualities for URL: {args.url}", file=sys.stderr)
-            result = get_video_qualities(args.url)
-            print(json.dumps(result, indent=2))
+    if args.action == 'qualities':
+        # Get available qualities
+        print(f"DEBUG: Getting qualities for URL: {args.url}", file=sys.stderr)
+        result = get_video_qualities(args.url)
+        print(json.dumps(result, indent=2))
 
-        elif args.action == 'download':
-            if not args.quality:
-                print(json.dumps({'error': 'Quality parameter required for download'}, indent=2))
-                sys.exit(1)
-
-            # Download video
-            print(f"DEBUG: Downloading with quality: {args.quality} for URL: {args.url}", file=sys.stderr)
-            result = download_video(args.url, args.quality, args.output)
-            print(json.dumps(result, indent=2))
-
-        else:
-            print(json.dumps({'error': 'Invalid action'}, indent=2))
+    elif args.action == 'download':
+        if not args.quality:
+            print(json.dumps({'error': 'Quality parameter required for download'}, indent=2))
             sys.exit(1)
+
+        # Download video
+        print(f"DEBUG: Downloading with quality: {args.quality} for URL: {args.url}", file=sys.stderr)
+        result = download_video(args.url, args.quality, args.output)
+        print(json.dumps(result, indent=2))
+
+    else:
+        print(json.dumps({'error': 'Invalid action'}, indent=2))
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
