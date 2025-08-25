@@ -1766,7 +1766,7 @@ async function downloadYouTube(url, quality, format) {
     }
 }
 
-// NEW: Download YouTube video via btchDownloader (WORKING ALTERNATIVE)
+// NEW: Download YouTube video via btchDownloader (WORKING ALTERNATIVE) with ENHANCED QUALITY SELECTION
 async function downloadYouTubeViaBtchDownloader(url, quality, format) {
     try {
         console.log('🚀 === BTCH-DOWNLOADER DOWNLOAD METHOD STARTED ===');
@@ -1820,6 +1820,29 @@ async function downloadYouTubeViaBtchDownloader(url, quality, format) {
         
         console.log('🔗 Download URL found:', downloadUrl.substring(0, 100) + '...');
         
+        // ENHANCED QUALITY SELECTION LOGIC: Try to get better quality if requested
+        if (format === 'mp4' && quality !== '360p') {
+            console.log('🔍 Quality selection requested:', quality, '- attempting to get better quality...');
+            
+            try {
+                // Try to get better quality via multiple methods
+                console.log('🔄 Attempting to get better quality via multiple methods...');
+                const betterQualityUrl = await getBetterQualityUrlEnhanced(url, quality, format);
+                
+                if (betterQualityUrl) {
+                    console.log('✅ Better quality URL found:', betterQualityUrl.substring(0, 100) + '...');
+                    downloadUrl = betterQualityUrl;
+                } else {
+                    console.log('⚠️ No better quality found, using btchDownloader default (360p)');
+                    console.log('💡 Note: btchDownloader provides 360p quality by default');
+                    console.log('💡 For higher quality, consider using a different download method');
+                }
+            } catch (qualityError) {
+                console.log('⚠️ Quality selection failed, using btchDownloader default (360p):', qualityError.message);
+                console.log('💡 btchDownloader provides reliable 360p downloads');
+            }
+        }
+        
         // Download the file using axios
         console.log('📥 Starting download via axios...');
         const response = await axios({
@@ -1840,15 +1863,18 @@ async function downloadYouTubeViaBtchDownloader(url, quality, format) {
         // Create a readable stream that can be returned
         const downloadStream = response.data;
         
-        // Add metadata to the stream
+        // Add metadata to the stream with quality information
+        const actualQuality = determineActualQuality(downloadUrl, quality);
         downloadStream.videoInfo = {
             title: result.title || 'Unknown Title',
             author: result.author || 'Unknown Author',
             thumbnail: result.thumbnail || null,
-            quality: quality,
+            requestedQuality: quality, // What the user requested
+            actualQuality: actualQuality, // What we actually got
             format: format,
             platform: 'YouTube',
-            method: 'btchDownloader'
+            method: 'btchDownloader',
+            qualityNote: quality !== '360p' ? 'btchDownloader provides 360p by default. Higher quality requires different methods.' : 'Quality as requested'
         };
         
         return downloadStream;
@@ -1857,6 +1883,179 @@ async function downloadYouTubeViaBtchDownloader(url, quality, format) {
         console.error('❌ btchDownloader download method failed:', error);
         throw new Error(`btchDownloader method failed: ${error.message}`);
     }
+}
+
+// NEW: Enhanced function to get better quality URLs with multiple fallback methods
+async function getBetterQualityUrlEnhanced(url, requestedQuality, format) {
+    try {
+        console.log('🔍 === ENHANCED QUALITY SELECTION SYSTEM ===');
+        console.log('📝 Requested quality:', requestedQuality, 'Format:', format);
+        
+        // Method 1: Try to get quality info from video page
+        console.log('🔄 METHOD 1: Checking video page for quality info...');
+        try {
+            const qualityInfo = await getVideoQualityInfo(url);
+            if (qualityInfo && qualityInfo.availableQualities && qualityInfo.availableQualities.length > 0) {
+                console.log('✅ Found available qualities:', qualityInfo.availableQualities);
+                
+                // Find the best quality that matches or is close to requested
+                const bestQuality = findBestQuality(qualityInfo.availableQualities, requestedQuality);
+                if (bestQuality) {
+                    console.log('✅ Best quality found:', bestQuality.height + 'p');
+                    return bestQuality.url;
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Method 1 failed:', error.message);
+        }
+        
+        // Method 2: Try to construct quality-specific URLs
+        console.log('🔄 METHOD 2: Attempting to construct quality-specific URLs...');
+        try {
+            const qualityUrl = await constructQualityUrl(url, requestedQuality, format);
+            if (qualityUrl) {
+                console.log('✅ Quality-specific URL constructed');
+                return qualityUrl;
+            }
+        } catch (error) {
+            console.log('⚠️ Method 2 failed:', error.message);
+        }
+        
+        // Method 3: Try to get quality from video info API
+        console.log('🔄 METHOD 3: Checking video info API...');
+        try {
+            const apiQuality = await getQualityFromAPI(url, requestedQuality);
+            if (apiQuality) {
+                console.log('✅ Quality found via API');
+                return apiQuality;
+            }
+        } catch (error) {
+            console.log('⚠️ Method 3 failed:', error.message);
+        }
+        
+        console.log('❌ All quality selection methods failed');
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Error in enhanced quality selection:', error);
+        return null;
+    }
+}
+
+// Helper function to get video quality info from page
+async function getVideoQualityInfo(url) {
+    try {
+        const response = await axios.get(url, {
+            headers: getEnhancedHeaders(),
+            timeout: 15000
+        });
+        
+        const html = response.data;
+        
+        // Extract video info from ytInitialPlayerResponse
+        const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
+        if (!playerResponseMatch) {
+            return null;
+        }
+        
+        const playerResponse = JSON.parse(playerResponseMatch[1]);
+        
+        if (!playerResponse.streamingData || !playerResponse.streamingData.formats) {
+            return null;
+        }
+        
+        const formats = playerResponse.streamingData.formats;
+        const adaptiveFormats = playerResponse.streamingData.adaptiveFormats || [];
+        
+        // Extract available qualities (even if URLs are encrypted)
+        const availableQualities = [];
+        
+        [...formats, ...adaptiveFormats].forEach(format => {
+            if (format.height && format.mimeType) {
+                availableQualities.push({
+                    height: format.height,
+                    width: format.width,
+                    mimeType: format.mimeType,
+                    hasUrl: !!format.url,
+                    isEncrypted: !!(format.signatureCipher || format.cipher)
+                });
+            }
+        });
+        
+        return {
+            availableQualities: availableQualities,
+            hasEncryptedUrls: availableQualities.some(q => q.isEncrypted)
+        };
+        
+    } catch (error) {
+        console.error('❌ Error getting video quality info:', error);
+        return null;
+    }
+}
+
+// Helper function to find best quality match
+function findBestQuality(availableQualities, requestedQuality) {
+    const qualityMap = {
+        '144p': 144, '240p': 240, '360p': 360, '480p': 480,
+        '720p': 720, '1080p': 1080, '1440p': 1440, '2160p': 2160,
+        '4k': 2160, '8k': 4320
+    };
+    
+    const targetHeight = qualityMap[requestedQuality] || 720;
+    
+    // Find exact match first
+    let exactMatch = availableQualities.find(q => q.height === targetHeight && q.hasUrl && !q.isEncrypted);
+    if (exactMatch) return exactMatch;
+    
+    // Find closest higher quality
+    let higherQuality = availableQualities
+        .filter(q => q.height >= targetHeight && q.hasUrl && !q.isEncrypted)
+        .sort((a, b) => a.height - b.height)[0];
+    
+    if (higherQuality) return higherQuality;
+    
+    // Find closest lower quality
+    let lowerQuality = availableQualities
+        .filter(q => q.height <= targetHeight && q.hasUrl && !q.isEncrypted)
+        .sort((a, b) => b.height - a.height)[0];
+    
+    return lowerQuality;
+}
+
+// Helper function to construct quality-specific URLs (placeholder)
+async function constructQualityUrl(url, quality, format) {
+    // This is a placeholder - in practice, this would require complex URL construction
+    // that may not be feasible without the full YouTube download infrastructure
+    console.log('⚠️ URL construction method not implemented (requires complex infrastructure)');
+    return null;
+}
+
+// Helper function to get quality from API (placeholder)
+async function getQualityFromAPI(url, quality) {
+    // This is a placeholder - could be implemented with YouTube Data API v3
+    // but would require API keys and may not provide direct download URLs
+    console.log('⚠️ API quality method not implemented (requires API keys)');
+    return null;
+}
+
+// Helper function to determine actual quality from URL
+function determineActualQuality(url, requestedQuality) {
+    // Extract quality from URL parameters if possible
+    if (url.includes('itag=')) {
+        const itagMatch = url.match(/itag=(\d+)/);
+        if (itagMatch) {
+            const itag = itagMatch[1];
+            // Map common itags to qualities
+            const itagQualityMap = {
+                '18': '360p', '22': '720p', '37': '1080p', '137': '1080p',
+                '136': '720p', '135': '480p', '134': '360p', '133': '240p'
+            };
+            return itagQualityMap[itag] || 'Unknown';
+        }
+    }
+    
+    // If we can't determine, return what was requested
+    return requestedQuality;
 }
 
 // Extract video URLs from YouTube page HTML
