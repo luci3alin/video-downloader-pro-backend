@@ -18,9 +18,9 @@ const InstagramDownloader = require('instagram-url-direct');
 const TwitterDownloader = require('twitter-downloader');
 const { Vimeo } = require('@vimeo/vimeo');
 
-// NEW: Modern YouTube download alternatives
-const play = require('play-dl');
-const zulYtdl = require('@zulproject/ytdl');
+// NEW: Modern YouTube download alternatives (temporarily commented for debugging)
+// const play = require('play-dl');
+// const zulYtdl = require('@zulproject/ytdl');
 
 // YouTube API Key for fallback (all restrictions removed)
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'AIzaSyDATZtBCDsSV1Bjb8xNZmQpZBtLhTJ-htk';
@@ -1699,27 +1699,27 @@ async function downloadYouTube(url, quality, format) {
         // Try modern alternatives in order of preference
         console.log('🚀 Attempting download with modern alternatives...');
         
-        // METHOD 1: Try play-dl first (most modern and reliable)
-        try {
-            console.log('🥇 STEP 1: Trying play-dl (MODERN PRIMARY)...');
-            const downloadStream = await downloadYouTubeViaPlayDl(url, quality, format);
-            console.log('✅ SUCCESS: play-dl download completed');
-            return downloadStream;
-        } catch (playDlError) {
-            console.log('❌ STEP 1 FAILED: play-dl failed:', playDlError.message);
-            console.log('🔄 FALLBACK: Moving to @zulproject/ytdl...');
-        }
+        // METHOD 1: Try play-dl first (most modern and reliable) - TEMPORARILY DISABLED
+        // try {
+        //     console.log('🥇 STEP 1: Trying play-dl (MODERN PRIMARY)...');
+        //     const downloadStream = await downloadYouTubeViaPlayDl(url, quality, format);
+        //     console.log('✅ SUCCESS: play-dl download completed');
+        //     return downloadStream;
+        // } catch (playDlError) {
+        //     console.log('❌ STEP 1 FAILED: play-dl failed:', playDlError.message);
+        //     console.log('🔄 FALLBACK: Moving to @zulproject/ytdl...');
+        // }
         
-        // METHOD 2: Try @zulproject/ytdl (alternative scraper)
-        try {
-            console.log('🥈 STEP 2: Trying @zulproject/ytdl (ALTERNATIVE SCRAPER)...');
-            const downloadStream = await downloadYouTubeViaZulYtdl(url, quality, format);
-            console.log('✅ SUCCESS: @zulproject/ytdl download completed');
-            return downloadStream;
-        } catch (zulYtdlError) {
-            console.log('❌ STEP 2 FAILED: @zulproject/ytdl failed:', zulYtdlError.message);
-            console.log('🔄 FALLBACK: Moving to yt-dlp...');
-        }
+        // METHOD 2: Try @zulproject/ytdl (alternative scraper) - TEMPORARILY DISABLED
+        // try {
+        //     console.log('🥈 STEP 2: Trying @zulproject/ytdl (ALTERNATIVE SCRAPER)...');
+        //     const downloadStream = await downloadYouTubeViaZulYtdl(url, quality, format);
+        //     console.log('✅ SUCCESS: @zulproject/ytdl download completed');
+        //     return downloadStream;
+        // } catch (zulYtdlError) {
+        //     console.log('❌ STEP 2 FAILED: @zulproject/ytdl failed:', zulYtdlError.message);
+        //     console.log('🔄 FALLBACK: Moving to yt-dlp...');
+        // }
         
         // METHOD 3: Fallback to yt-dlp (legacy method)
         try {
@@ -2386,8 +2386,8 @@ async function downloadYouTubeViaYtdlCore(url, quality, format) {
     }
 }
 
-// YouTube info function
-async function getYouTubeInfo(url) {
+// YouTube info function - TEMPORARILY DISABLED (using new version at end of file)
+// async function getYouTubeInfo(url) {
     try {
         // Check if we're on Render.com (production) or local
         const isProduction = process.env.RENDER || process.env.NODE_ENV === 'production';
@@ -2395,27 +2395,27 @@ async function getYouTubeInfo(url) {
         if (isProduction) {
             console.log('🔍 ANALYSIS START - Modern Alternatives → YouTube API v3 → yt-dlp (PRIMARY on Render.com)');
             
-            // Try modern alternatives first
-            try {
-                console.log('🥇 STEP 1: Trying play-dl (MODERN PRIMARY on Render.com)...');
-                
-                const result = await getYouTubeInfoViaPlayDl(url);
-                console.log('✅ STEP 1 SUCCESS: play-dl succeeded on Render.com');
-                return result;
-                
-            } catch (playDlError) {
-                console.log('❌ STEP 1 FAILED: play-dl failed on Render.com');
-                console.log('🔄 FALLBACK: Moving to @zulproject/ytdl...');
-                
-                // Try @zulproject/ytdl
-                try {
-                    console.log('🥈 STEP 2: Trying @zulproject/ytdl (ALTERNATIVE SCRAPER on Render.com)...');
-                    
-                    const result = await getYouTubeInfoViaZulYtdl(url);
-                    console.log('✅ STEP 2 SUCCESS: @zulproject/ytdl succeeded on Render.com');
-                    return result;
-                    
-                } catch (zulYtdlError) {
+            // Try modern alternatives first - TEMPORARILY DISABLED
+            // try {
+            //     console.log('🥇 STEP 1: Trying play-dl (MODERN PRIMARY on Render.com)...');
+            //     
+            //     const result = await getYouTubeInfoViaPlayDl(url);
+            //     console.log('✅ STEP 1 SUCCESS: play-dl succeeded on Render.com');
+            //     return result;
+            //     
+            // } catch (playDlError) {
+            //     console.log('❌ STEP 1 FAILED: play-dl failed on Render.com');
+            //     console.log('🔄 FALLBACK: Moving to @zulproject/ytdl...');
+            //     
+            //     // Try @zulproject/ytdl
+            //     try {
+            //         console.log('🥈 STEP 2: Trying @zulproject/ytdl (ALTERNATIVE SCRAPER on Render.com)...');
+            //         
+            //         const result = await getYouTubeInfoViaZulYtdl(url);
+            //     console.log('✅ STEP 2 SUCCESS: @zulproject/ytdl succeeded on Render.com');
+            //     return result;
+            //     
+            // } catch (zulYtdlError) {
                     console.log('❌ STEP 2 FAILED: @zulproject/ytdl failed on Render.com');
                     console.log('🔄 FALLBACK: Moving to YouTube API v3...');
                     
@@ -2475,107 +2475,161 @@ async function getYouTubeInfo(url) {
                 }
             }
         } else {
-            console.log('🔍 ANALYSIS START - Modern Alternatives → YouTube API v3 → ytdl-core → yt-dlp (LOCAL)');
+            console.log('🔍 ANALYSIS START - Modern Alternatives → YouTube API v3 → ytdl-core → yt-dlp (LOCAL) - TEMPORARILY DISABLED');
             
-            // Try modern alternatives first
+            // Try modern alternatives first - TEMPORARILY DISABLED
+            // try {
+            //     console.log('🥇 STEP 1: Trying play-dl (MODERN PRIMARY on LOCAL)...');
+            //     
+            //     const result = await getYouTubeInfoViaPlayDl(url);
+            //     console.log('✅ STEP 1 SUCCESS: play-dl succeeded on LOCAL');
+            //     return result;
+            //     
+            // } catch (playDlError) {
+            //     console.log('❌ STEP 1 FAILED: play-dl failed on LOCAL');
+            //     console.log('🔄 FALLBACK: Moving to @zulproject/ytdl...');
+            //     
+            //     // Try ytdl-core on LOCAL
+            //     try {
+            //         console.log('🥈 STEP 2: Trying @zulproject/ytdl (ALTERNATIVE SCRAPER on LOCAL)...');
+            //         
+            //         const result = await getYouTubeInfoViaZulYtdl(url);
+            //         console.log('✅ STEP 2 SUCCESS: @zulproject/ytdl succeeded on LOCAL');
+            //         return result;
+            //     
+            // } catch (zulYtdlError) {
+            //     console.log('❌ STEP 2 FAILED: @zulproject/ytdl failed on LOCAL');
+            //     console.log('🔄 FALLBACK: Moving to YouTube API v3...');
+            //     
+            //     // Try YouTube Data API v3
+            //     try {
+            //         console.log('🥉 STEP 3: Trying YouTube Data API v3 (API FALLBACK on LOCAL)...');
+            //         
+            //         const videoId = extractYouTubeVideoId(url);
+            //         if (!videoId) {
+            //             throw new Error('Invalid YouTube URL');
+            //         }
+            //         
+            //         const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${YOUTUBE_API_KEY}`;
+            //         const response = await axios.get(apiUrl);
+            //         
+            //         if (response.data.items && response.data.items.length > 0) {
+            //             const video = response.data.items[0];
+            //             const snippet = video.snippet;
+            //             
+            //             console.log('✅ STEP 3 SUCCESS: YouTube Data API v3 succeeded on LOCAL');
+            //             
+            //             return {
+            //                 title: snippet.title,
+            //                 duration: video.contentDetails.duration || 'Unknown',
+            //                 thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+            //                 formats: ['mp4', 'mp3'],
+            //                 qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+            //                 platform: 'YouTube',
+            //                 debugInfo: {
+            //                 method: 'YouTube Data API v3 (fallback)',
+            //                 isStatic: false,
+            //                 realQualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+            //                 message: 'Video info retrieved via YouTube Data API v3 fallback on LOCAL'
+            //                 }
+            //             };
+            //         } else {
+            //             throw new Error('Video not found');
+            //         }
+            //         
+            //     } catch (apiError) {
+            //         console.log('❌ STEP 3 FAILED: YouTube Data API v3 failed on LOCAL');
+            //         console.log('🔄 FALLBACK: Moving to ytdl-core...');
+            //         
+            //         // Try ytdl-core
+            //         try {
+            //             console.log('🏁 STEP 4: Trying ytdl-core (FALLBACK on LOCAL)...');
+            //             
+            //         const result = await getYouTubeInfoViaYtdlCore(url);
+            //         console.log('✅ STEP 4 SUCCESS: ytdl-core succeeded on LOCAL');
+            //         return result;
+            //         
+            //     } catch (ytdlError) {
+            //         console.log('❌ STEP 4 FAILED: ytdl-core failed on LOCAL');
+            //         console.log('🔄 FALLBACK: Moving to yt-dlp...');
+            //         
+            //         // Final fallback to yt-dlp
+            //         try {
+            //             console.log('🏁 STEP 5: Trying yt-dlp (FINAL FALLBACK on LOCAL)...');
+            //             
+            //         const result = await getYouTubeInfoViaYtDlp(url);
+            //         console.log('✅ STEP 5 SUCCESS: yt-dlp succeeded on LOCAL');
+            //         return result;
+            //         
+            //     } catch (ytDlpError) {
+            //         console.log('❌ STEP 5 FAILED: yt-dlp failed on LOCAL');
+            //         throw new Error(`All methods failed on LOCAL: play-dl, @zulproject/ytdl, API v3, ytdl-core, yt-dlp`);
+            //         }
+            //     }
+            // }
+            // }
+            // }
+            
+            // TEMPORARILY: Just use YouTube API v3 for local as well
             try {
-                console.log('🥇 STEP 1: Trying play-dl (MODERN PRIMARY on LOCAL)...');
+                console.log('🥉 STEP 1: Trying YouTube Data API v3 (API FALLBACK on LOCAL)...');
                 
-                const result = await getYouTubeInfoViaPlayDl(url);
-                console.log('✅ STEP 1 SUCCESS: play-dl succeeded on LOCAL');
-                return result;
+                const videoId = extractYouTubeVideoId(url);
+                if (!videoId) {
+                    throw new Error('Invalid YouTube URL');
+                }
                 
-            } catch (playDlError) {
-                console.log('❌ STEP 1 FAILED: play-dl failed on LOCAL');
-                console.log('🔄 FALLBACK: Moving to @zulproject/ytdl...');
+                const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${YOUTUBE_API_KEY}`;
+                const response = await axios.get(apiUrl);
                 
-                // Try ytdl-core on LOCAL
-                try {
-                    console.log('🥈 STEP 2: Trying @zulproject/ytdl (ALTERNATIVE SCRAPER on LOCAL)...');
+                if (response.data.items && response.data.items.length > 0) {
+                    const video = response.data.items[0];
+                    const snippet = video.snippet;
                     
-                    const result = await getYouTubeInfoViaZulYtdl(url);
-                    console.log('✅ STEP 2 SUCCESS: @zulproject/ytdl succeeded on LOCAL');
+                    console.log('✅ STEP 1 SUCCESS: YouTube Data API v3 succeeded on LOCAL');
+                    
+                    return {
+                        title: snippet.title,
+                        duration: video.contentDetails.duration || 'Unknown',
+                        thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+                        formats: ['mp4', 'mp3'],
+                        qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                        platform: 'YouTube',
+                        debugInfo: {
+                            method: 'YouTube Data API v3 (fallback)',
+                            isStatic: false,
+                            realQualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                            message: 'Video info retrieved via YouTube Data API v3 fallback on LOCAL'
+                        }
+                    };
+                } else {
+                    throw new Error('Video not found');
+                }
+                
+            } catch (apiError) {
+                console.log('❌ STEP 1 FAILED: YouTube Data API v3 failed on LOCAL');
+                console.log('🔄 FALLBACK: Moving to yt-dlp...');
+                
+                // Final fallback to yt-dlp
+                try {
+                    console.log('🏁 STEP 2: Trying yt-dlp (FINAL FALLBACK on LOCAL)...');
+                    
+                    const result = await getYouTubeInfoViaYtDlp(url);
+                    console.log('✅ STEP 2 SUCCESS: yt-dlp succeeded on LOCAL');
                     return result;
                     
-                } catch (zulYtdlError) {
-                    console.log('❌ STEP 2 FAILED: @zulproject/ytdl failed on LOCAL');
-                    console.log('🔄 FALLBACK: Moving to YouTube API v3...');
-                    
-                    // Try YouTube Data API v3
-                    try {
-                        console.log('🥉 STEP 3: Trying YouTube Data API v3 (API FALLBACK on LOCAL)...');
-                        
-                        const videoId = extractYouTubeVideoId(url);
-                        if (!videoId) {
-                            throw new Error('Invalid YouTube URL');
-                        }
-                        
-                        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${YOUTUBE_API_KEY}`;
-                        const response = await axios.get(apiUrl);
-                        
-                        if (response.data.items && response.data.items.length > 0) {
-                            const video = response.data.items[0];
-                            const snippet = video.snippet;
-                            
-                            console.log('✅ STEP 3 SUCCESS: YouTube Data API v3 succeeded on LOCAL');
-                            
-                            return {
-                                title: snippet.title,
-                                duration: video.contentDetails.duration || 'Unknown',
-                                thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
-                                formats: ['mp4', 'mp3'],
-                                qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
-                                platform: 'YouTube',
-                                debugInfo: {
-                                    method: 'YouTube Data API v3 (fallback)',
-                                    isStatic: false,
-                                    realQualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
-                                    message: 'Video info retrieved via YouTube Data API v3 fallback on LOCAL'
-                                }
-                            };
-                        } else {
-                            throw new Error('Video not found');
-                        }
-                        
-                    } catch (apiError) {
-                        console.log('❌ STEP 3 FAILED: YouTube Data API v3 failed on LOCAL');
-                        console.log('🔄 FALLBACK: Moving to ytdl-core...');
-                        
-                        // Try ytdl-core
-                        try {
-                            console.log('🏁 STEP 4: Trying ytdl-core (FALLBACK on LOCAL)...');
-                            
-                            const result = await getYouTubeInfoViaYtdlCore(url);
-                            console.log('✅ STEP 4 SUCCESS: ytdl-core succeeded on LOCAL');
-                            return result;
-                            
-                        } catch (ytdlError) {
-                            console.log('❌ STEP 4 FAILED: ytdl-core failed on LOCAL');
-                            console.log('🔄 FALLBACK: Moving to yt-dlp...');
-                            
-                            // Final fallback to yt-dlp
-                            try {
-                                console.log('🏁 STEP 5: Trying yt-dlp (FINAL FALLBACK on LOCAL)...');
-                                
-                                const result = await getYouTubeInfoViaYtDlp(url);
-                                console.log('✅ STEP 5 SUCCESS: yt-dlp succeeded on LOCAL');
-                                return result;
-                                
-                            } catch (ytDlpError) {
-                                console.log('❌ STEP 5 FAILED: yt-dlp failed on LOCAL');
-                                throw new Error(`All methods failed on LOCAL: play-dl, @zulproject/ytdl, API v3, ytdl-core, yt-dlp`);
-                            }
-                        }
-                    }
+                } catch (ytDlpError) {
+                    console.log('❌ STEP 2 FAILED: yt-dlp failed on LOCAL');
+                    throw new Error(`All methods failed on LOCAL: API v3, yt-dlp`);
                 }
             }
         }
         
-    } catch (error) {
-        console.error('❌ getYouTubeInfo failed:', error);
-        throw new Error(`Failed to get YouTube video info: ${error.message}`);
-    }
-}
+    // } catch (error) {
+    //     console.error('❌ getYouTubeInfo failed:', error);
+    //     throw new Error(`Failed to get YouTube video info: ${error.message}`);
+    // }
+// }
 
 // Helper function to extract YouTube video ID
 function extractYouTubeVideoId(url) {
@@ -3657,6 +3711,72 @@ function extractVideoUrlsFromEncodedResponses(html) {
     } catch (error) {
         console.log('❌ Error extracting from encoded responses:', error.message);
         return [];
+    }
+}
+
+// Simple working version of getYouTubeInfo function (temporarily replacing the broken one)
+async function getYouTubeInfo(url) {
+    try {
+        console.log('🔍 Getting YouTube video info...');
+        
+        // Extract video ID
+        const videoId = extractYouTubeVideoId(url);
+        if (!videoId) {
+            throw new Error('Invalid YouTube URL');
+        }
+        
+        // Try YouTube Data API v3 first
+        try {
+            console.log('🥇 STEP 1: Trying YouTube Data API v3...');
+            
+            const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${YOUTUBE_API_KEY}`;
+            const response = await axios.get(apiUrl);
+            
+            if (response.data.items && response.data.items.length > 0) {
+                const video = response.data.items[0];
+                const snippet = video.snippet;
+                
+                console.log('✅ SUCCESS: YouTube Data API v3 succeeded');
+                
+                return {
+                    title: snippet.title,
+                    duration: video.contentDetails.duration || 'Unknown',
+                    thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || '',
+                    formats: ['mp4', 'mp3'],
+                    qualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                    platform: 'YouTube',
+                    debugInfo: {
+                        method: 'YouTube Data API v3',
+                        isStatic: false,
+                        realQualities: ['4K', '2K', '1080p', '720p', '480p', '360p', '240p'],
+                        message: 'Video info retrieved via YouTube Data API v3'
+                    }
+                };
+            } else {
+                throw new Error('Video not found');
+            }
+            
+        } catch (apiError) {
+            console.log('❌ STEP 1 FAILED: YouTube Data API v3 failed');
+            console.log('🔄 FALLBACK: Moving to yt-dlp...');
+            
+            // Fallback to yt-dlp
+            try {
+                console.log('🏁 STEP 2: Trying yt-dlp...');
+                
+                const result = await getYouTubeInfoViaYtDlp(url);
+                console.log('✅ SUCCESS: yt-dlp succeeded');
+                return result;
+                
+            } catch (ytDlpError) {
+                console.log('❌ STEP 2 FAILED: yt-dlp failed');
+                throw new Error(`All methods failed: API v3, yt-dlp`);
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ getYouTubeInfo failed:', error);
+        throw new Error(`Failed to get YouTube video info: ${error.message}`);
     }
 }
 
