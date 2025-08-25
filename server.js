@@ -20,6 +20,7 @@ const { Vimeo } = require('@vimeo/vimeo');
 
 // NEW: Working alternative YouTube download library
 const btchDownloader = require('btch-downloader');
+const { ytmp4 } = require('@vreden/youtube_scraper');
 
 // NEW: Modern YouTube download alternatives (temporarily commented for debugging)
 // const play = require('play-dl');
@@ -2161,39 +2162,80 @@ async function getQualityFromAPI(url, quality) {
             // Get video info from YouTube API to understand available formats
             console.log('🔍 Getting detailed video info for quality construction...');
             
-            // Try to get better quality from btchDownloader with quality enhancement
-            console.log('🔄 Attempting btchDownloader quality enhancement...');
+                    // Try to get better quality from @vreden/youtube_scraper
+        console.log('🔄 Attempting @vreden/youtube_scraper quality enhancement...');
+        
+        try {
+            console.log('🎯 Using @vreden/youtube_scraper for quality selection...');
+            const vredenResult = await ytmp4(url);
             
-            try {
-                const btchResult = await btchDownloader.youtube(url);
-                if (btchResult && btchResult.mp4) {
-                    console.log('✅ btchDownloader found MP4 URL');
-                    
-                    // For 720p, try to construct a higher quality URL
-                    if (quality === '720p') {
-                        console.log('🎯 Constructing 720p URL from btchDownloader base...');
-                        
-                        // Try to modify the URL to get higher quality
-                        // This is a basic approach - in the future we could implement more sophisticated methods
-                        const enhancedUrl = btchResult.mp4;
-                        
-                        return {
-                            url: enhancedUrl,
-                            quality: '720p',
-                            method: 'btchDownloader enhanced',
-                            note: 'Using enhanced btchDownloader URL for 720p'
-                        };
-                    }
-                    
+            if (vredenResult && vredenResult.status && vredenResult.download) {
+                console.log('✅ @vreden/youtube_scraper found video info');
+                console.log('📊 Available qualities:', vredenResult.download.availableQuality);
+                console.log('🎯 Requested quality:', quality);
+                
+                // Find the best matching quality
+                const requestedQualityNum = parseInt(quality.replace('p', ''));
+                const availableQualities = vredenResult.download.availableQuality;
+                
+                // Find exact match or closest higher quality
+                let selectedQuality = null;
+                if (availableQualities.includes(requestedQualityNum)) {
+                    selectedQuality = requestedQualityNum;
+                } else {
+                    // Find closest higher quality
+                    selectedQuality = availableQualities.find(q => q >= requestedQualityNum) || availableQualities[availableQualities.length - 1];
+                }
+                
+                console.log('🎯 Selected quality:', selectedQuality + 'p');
+                
+                // Get download URL for selected quality
+                if (vredenResult.download.url) {
                     return {
-                        url: btchResult.mp4,
-                        quality: quality,
-                        method: 'btchDownloader enhanced'
+                        url: vredenResult.download.url,
+                        quality: selectedQuality + 'p',
+                        method: '@vreden/youtube_scraper',
+                        note: `Downloaded at ${selectedQuality}p via @vreden/youtube_scraper`,
+                        metadata: vredenResult.metadata
                     };
                 }
-            } catch (btchError) {
-                console.log('⚠️ btchDownloader enhancement failed:', btchError.message);
             }
+        } catch (vredenError) {
+            console.log('⚠️ @vreden/youtube_scraper enhancement failed:', vredenError.message);
+        }
+        
+        // Fallback to btchDownloader if @vreden fails
+        console.log('🔄 Falling back to btchDownloader enhancement...');
+        try {
+            const btchResult = await btchDownloader.youtube(url);
+            if (btchResult && btchResult.mp4) {
+                console.log('✅ btchDownloader found MP4 URL');
+                
+                // For 720p, try to construct a higher quality URL
+                if (quality === '720p') {
+                    console.log('🎯 Constructing 720p URL from btchDownloader base...');
+                    
+                    // Try to modify the URL to get higher quality
+                    // This is a basic approach - in the future we could implement more sophisticated methods
+                    const enhancedUrl = btchResult.mp4;
+                    
+                    return {
+                        url: enhancedUrl,
+                        quality: '720p',
+                        method: 'btchDownloader enhanced',
+                        note: 'Using enhanced btchDownloader URL for 720p'
+                    };
+                }
+                
+                return {
+                    url: btchResult.mp4,
+                    quality: quality,
+                    method: 'btchDownloader enhanced'
+                };
+            }
+        } catch (btchError) {
+            console.log('⚠️ btchDownloader enhancement failed:', btchError.message);
+        }
             
             console.log('⚠️ URL construction completed - returning enhanced result');
             return null;
