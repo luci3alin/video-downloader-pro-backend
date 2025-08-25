@@ -1,34 +1,38 @@
-// Final Enhanced YouTube Download System - Working Version
-// Integrates working libraries with proven quality selection capabilities
+// Final Enhanced YouTube Download System - NEW LIBRARIES VERSION
+// Integrates NEW reliable libraries with proven quality selection capabilities
 
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-console.log('🚀 FINAL Enhanced YouTube Download System');
-console.log('=======================================');
-console.log('🎯 Working libraries + Proven quality selection');
+console.log('🚀 FINAL Enhanced YouTube Download System - NEW LIBRARIES');
+console.log('========================================================');
+console.log('🎯 NEW reliable libraries + Enhanced quality selection');
 console.log('');
 
 class FinalEnhancedYouTubeDownloader {
     constructor() {
         this.libraries = {
-            // Primary libraries with multiple quality support
-            playDl: { name: 'play-dl', working: false, quality: 'multiple', antiBot: true, priority: 1 },
-            giftedDls: { name: 'gifted-dls', working: false, quality: 'multiple', antiBot: true, priority: 2 },
-            // Fallback libraries
-            btchDownloader: { name: 'btch-downloader', working: true, quality: 'single', antiBot: true, priority: 3 },
-            ytStreamer: { name: 'yt-streamer', working: true, quality: 'single', antiBot: true, priority: 4 }
+            // NEW: More reliable libraries with better quality support
+            ybdYtdlCore: { name: '@ybd-project/ytdl-core', working: false, quality: 'multiple', antiBot: true, priority: 1 },
+            ruHendYtdlCore: { name: '@ru-hend/ytdl-core', working: false, quality: 'multiple', antiBot: true, priority: 2 },
+            hybridYtdl: { name: 'hybrid-ytdl', working: false, quality: 'multiple', antiBot: true, priority: 3 },
+            hiudyyYtdl: { name: '@hiudyy/ytdl', working: false, quality: 'multiple', antiBot: true, priority: 4 },
+            // Fallback libraries (keep working ones)
+            btchDownloader: { name: 'btch-downloader', working: true, quality: 'single', antiBot: true, priority: 5 },
+            ytStreamer: { name: 'yt-streamer', working: true, quality: 'single', antiBot: true, priority: 6 }
         };
         
         this.antiBotSettings = {
             userAgents: [
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36',
                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0'
             ],
             delays: [1000, 2000, 3000, 4000, 5000],
             retryAttempts: 3,
@@ -51,22 +55,38 @@ class FinalEnhancedYouTubeDownloader {
     }
     
     async initializeLibraries() {
-        console.log('🔧 Initializing working YouTube libraries...');
+        console.log('🔧 Initializing NEW reliable YouTube libraries...');
         
         // Test each library to see which ones are working
         for (const [key, lib] of Object.entries(this.libraries)) {
             try {
-                if (key === 'playDl') {
+                if (key === 'ybdYtdlCore') {
                     try {
-                        const playDl = require('play-dl');
+                        const ybdYtdlCore = require('@ybd-project/ytdl-core');
                         this.libraries[key].working = true;
                         console.log(`✅ ${lib.name} initialized successfully`);
                     } catch (e) {
                         console.log(`⚠️ ${lib.name} not available: ${e.message}`);
                     }
-                } else if (key === 'giftedDls') {
+                } else if (key === 'ruHendYtdlCore') {
                     try {
-                        const giftedDls = require('gifted-dls');
+                        const ruHendYtdlCore = require('@ru-hend/ytdl-core');
+                        this.libraries[key].working = true;
+                        console.log(`✅ ${lib.name} initialized successfully`);
+                    } catch (e) {
+                        console.log(`⚠️ ${lib.name} not available: ${e.message}`);
+                    }
+                } else if (key === 'hybridYtdl') {
+                    try {
+                        const hybridYtdl = require('hybrid-ytdl');
+                        this.libraries[key].working = true;
+                        console.log(`✅ ${lib.name} initialized successfully`);
+                    } catch (e) {
+                        console.log(`⚠️ ${lib.name} not available: ${e.message}`);
+                    }
+                } else if (key === 'hiudyyYtdl') {
+                    try {
+                        const hiudyyYtdl = require('@hiudyy/ytdl');
                         this.libraries[key].working = true;
                         console.log(`✅ ${lib.name} initialized successfully`);
                     } catch (e) {
@@ -135,10 +155,14 @@ class FinalEnhancedYouTubeDownloader {
                     
                     let qualityOptions;
                     
-                    if (key === 'playDl') {
-                        qualityOptions = await this.getPlayDlQualityOptions(url);
-                    } else if (key === 'giftedDls') {
-                        qualityOptions = await this.getGiftedDlsQualityOptions(url);
+                    if (key === 'ybdYtdlCore') {
+                        qualityOptions = await this.getYbdYtdlCoreQualityOptions(url);
+                    } else if (key === 'ruHendYtdlCore') {
+                        qualityOptions = await this.getRuHendYtdlCoreQualityOptions(url);
+                    } else if (key === 'hybridYtdl') {
+                        qualityOptions = await this.getHybridYtdlQualityOptions(url);
+                    } else if (key === 'hiudyyYtdl') {
+                        qualityOptions = await this.getHiudyyYtdlQualityOptions(url);
                     } else if (key === 'btchDownloader') {
                         qualityOptions = await this.getBtchDownloaderQualityOptions(url);
                     } else if (key === 'ytStreamer') {
@@ -168,24 +192,24 @@ class FinalEnhancedYouTubeDownloader {
         }
     }
     
-    // Play-DL implementation (if available)
-    async getPlayDlQualityOptions(url) {
+    // YBD-YTDL-Core implementation (if available)
+    async getYbdYtdlCoreQualityOptions(url) {
         try {
-            const playDl = require('play-dl');
-            const videoInfo = await playDl.video_info(url);
+            const ybdYtdlCore = require('@ybd-project/ytdl-core');
+            const videoInfo = await ybdYtdlCore.default.getInfo(url);
             
             const qualities = [];
-            if (videoInfo.video_details.formats) {
-                videoInfo.video_details.formats.forEach(format => {
-                    if (format.quality && format.quality !== 'auto') {
+            if (videoInfo.formats) {
+                videoInfo.formats.forEach(format => {
+                    if (format.qualityLabel) {
                         qualities.push({
-                            quality: format.quality,
-                            format: format.mimeType?.split('/')[1] || 'mp4',
+                            quality: format.qualityLabel,
+                            format: format.ext || 'mp4',
                             size: format.contentLength ? `${(format.contentLength / 1024 / 1024).toFixed(1)}MB` : 'Unknown',
                             url: 'Available',
                             formatId: format.itag || format.format_id,
-                            note: `${format.quality} ${format.mimeType?.split('/')[1] || 'mp4'}`,
-                            source: 'play-dl',
+                            note: `${format.qualityLabel} ${format.mimeType?.split('/')[1] || 'mp4'}`,
+                            source: 'ybd-ytdl-core',
                             antiBot: true
                         });
                     }
@@ -193,9 +217,9 @@ class FinalEnhancedYouTubeDownloader {
             }
             
             return {
-                title: videoInfo.video_details.title,
-                duration: videoInfo.video_details.durationInSec,
-                views: videoInfo.video_details.views,
+                title: videoInfo.videoDetails?.title || 'Unknown',
+                duration: videoInfo.videoDetails?.lengthSeconds || 0,
+                views: videoInfo.videoDetails?.viewCount || 0,
                 qualities: qualities.sort((a, b) => {
                     const aHeight = parseInt(a.quality) || 0;
                     const bHeight = parseInt(b.quality) || 0;
@@ -203,17 +227,54 @@ class FinalEnhancedYouTubeDownloader {
                 })
             };
         } catch (error) {
-            throw new Error(`Play-DL failed: ${error.message}`);
+            throw new Error(`YBD-YTDL-Core failed: ${error.message}`);
         }
     }
     
-    // Gifted-DLS implementation (if available)
-    async getGiftedDlsQualityOptions(url) {
+    // RuHend-YTDL-Core implementation (if available)
+    async getRuHendYtdlCoreQualityOptions(url) {
         try {
-            const giftedDls = require('gifted-dls');
-            const instance = new giftedDls();
-            // Fix: Use the correct method name - ytmp4 for video info
-            const videoInfo = await instance.ytmp4(url);
+            const ruHendYtdlCore = require('@ru-hend/ytdl-core');
+            const videoInfo = await ruHendYtdlCore.getInfo(url);
+            
+            const qualities = [];
+            if (videoInfo.formats) {
+                videoInfo.formats.forEach(format => {
+                    if (format.qualityLabel) {
+                        qualities.push({
+                            quality: format.qualityLabel,
+                            format: format.ext || 'mp4',
+                            size: format.contentLength ? `${(format.contentLength / 1024 / 1024).toFixed(1)}MB` : 'Unknown',
+                            url: 'Available',
+                            formatId: format.itag || format.format_id,
+                            note: `${format.qualityLabel} ${format.mimeType?.split('/')[1] || 'mp4'}`,
+                            source: 'ru-hend-ytdl-core',
+                            antiBot: true
+                        });
+                    }
+                });
+            }
+            
+            return {
+                title: videoInfo.videoDetails?.title || 'Unknown',
+                duration: videoInfo.videoDetails?.lengthSeconds || 0,
+                views: videoInfo.videoDetails?.viewCount || 0,
+                qualities: qualities.sort((a, b) => {
+                    const aHeight = parseInt(a.quality) || 0;
+                    const bHeight = parseInt(b.quality) || 0;
+                    return bHeight - aHeight;
+                })
+            };
+        } catch (error) {
+            throw new Error(`RuHend-YTDL-Core failed: ${error.message}`);
+        }
+    }
+    
+    // Hybrid-YTDL implementation (if available)
+    async getHybridYtdlQualityOptions(url) {
+        try {
+            const hybridYtdl = require('hybrid-ytdl');
+            const videoInfo = await hybridYtdl.getVideoInfo(url);
             
             const qualities = [];
             if (videoInfo.formats) {
@@ -226,7 +287,7 @@ class FinalEnhancedYouTubeDownloader {
                             url: 'Available',
                             formatId: format.format_id,
                             note: `${format.quality} ${format.ext || 'mp4'}`,
-                            source: 'gifted-dls',
+                            source: 'hybrid-ytdl',
                             antiBot: true
                         });
                     }
@@ -244,7 +305,46 @@ class FinalEnhancedYouTubeDownloader {
                 })
             };
         } catch (error) {
-            throw new Error(`Gifted-DLS failed: ${error.message}`);
+            throw new Error(`Hybrid-YTDL failed: ${error.message}`);
+        }
+    }
+    
+    // Hiudyy-YTDL implementation (if available)
+    async getHiudyyYtdlQualityOptions(url) {
+        try {
+            const hiudyyYtdl = require('@hiudyy/ytdl');
+            const videoInfo = await hiudyyYtdl.ytmp4(url);
+            
+            const qualities = [];
+            if (videoInfo.formats) {
+                videoInfo.formats.forEach(format => {
+                    if (format.quality) {
+                        qualities.push({
+                            quality: format.quality,
+                            format: format.ext || 'mp4',
+                            size: format.filesize ? `${(format.filesize / 1024 / 1024).toFixed(1)}MB` : 'Unknown',
+                            url: 'Available',
+                            formatId: format.format_id,
+                            note: `${format.quality} ${format.ext || 'mp4'}`,
+                            source: 'hiudyy-ytdl',
+                            antiBot: true
+                        });
+                    }
+                });
+            }
+            
+            return {
+                title: videoInfo.title || 'Unknown',
+                duration: videoInfo.duration || 0,
+                views: videoInfo.view_count || 0,
+                qualities: qualities.sort((a, b) => {
+                    const aHeight = parseInt(a.quality) || 0;
+                    const bHeight = parseInt(b.quality) || 0;
+                    return bHeight - aHeight;
+                })
+            };
+        } catch (error) {
+            throw new Error(`Hiudyy-YTDL failed: ${error.message}`);
         }
     }
     
@@ -484,8 +584,10 @@ async function demo() {
         console.log('  • Automatic retry with different settings');
         
         console.log('\n📚 Working Libraries Integrated:');
-        console.log('  • play-dl (multiple qualities)');
-        console.log('  • gifted-dls (multiple qualities)');
+        console.log('  • ybd-ytdl-core (multiple qualities)');
+        console.log('  • ru-hend-ytdl-core (multiple qualities)');
+        console.log('  • hybrid-ytdl (multiple qualities)');
+        console.log('  • hiudyy-ytdl (multiple qualities)');
         console.log('  • btch-downloader (fallback)');
         console.log('  • yt-streamer (fallback)');
         
