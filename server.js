@@ -18,6 +18,9 @@ const InstagramDownloader = require('instagram-url-direct');
 const TwitterDownloader = require('twitter-downloader');
 const { Vimeo } = require('@vimeo/vimeo');
 
+// NEW: Working alternative YouTube download library
+const vredenScraper = require('@vreden/youtube_scraper');
+
 // NEW: Modern YouTube download alternatives (temporarily commented for debugging)
 // const play = require('play-dl');
 // const zulYtdl = require('@zulproject/ytdl');
@@ -1691,11 +1694,11 @@ async function getYouTubeInfoViaYtDlp(url) {
     }
 }
 
-// Main YouTube download function - NOW USING MODERN ALTERNATIVES!
+// Main YouTube download function - NOW USING VREDEN SCRAPER AS PRIMARY!
 async function downloadYouTube(url, quality, format) {
     try {
-        console.log('📥 DOWNLOAD START -', quality, format, '- ALTERNATIVE METHODS ONLY (NO yt-dlp, NO ytdl-core)');
-        console.log('🚀 Attempting download with alternative methods only...');
+        console.log('📥 DOWNLOAD START -', quality, format, '- VREDEN SCRAPER PRIMARY + ALTERNATIVE METHODS (NO yt-dlp, NO ytdl-core)');
+        console.log('🚀 Attempting download with vredenScraper as primary method...');
         
         // Extract video ID
         const videoId = extractYouTubeVideoId(url);
@@ -1705,41 +1708,54 @@ async function downloadYouTube(url, quality, format) {
         
         console.log('🔍 Video ID extracted:', videoId);
         
-        // 🥇 STEP 1: Try direct HTML scraping method
+        // 🥇 STEP 1: Try vredenScraper (NEW WORKING ALTERNATIVE)
         try {
-            console.log('🥇 STEP 1: Trying direct HTML scraping method...');
+            console.log('🥇 STEP 1: Trying vredenScraper (NEW WORKING ALTERNATIVE)...');
             
-            const downloadStream = await downloadYouTubeViaHTMLScraping(url, quality, format);
-            console.log('✅ SUCCESS: HTML scraping method succeeded');
+            const downloadStream = await downloadYouTubeViaVredenScraper(url, quality, format);
+            console.log('✅ SUCCESS: vredenScraper method succeeded');
             return downloadStream;
             
-        } catch (htmlError) {
-            console.log('❌ STEP 1 FAILED: HTML scraping method failed');
-            console.log('🔄 FALLBACK: Moving to YouTube Data API v3 method...');
+        } catch (vredenError) {
+            console.log('❌ STEP 1 FAILED: vredenScraper method failed');
+            console.log('🔄 FALLBACK: Moving to HTML scraping method...');
             
-            // 🥈 STEP 2: Try YouTube Data API v3 method
+            // 🥈 STEP 2: Try direct HTML scraping method
             try {
-                console.log('🥈 STEP 2: Trying YouTube Data API v3 method...');
+                console.log('🥈 STEP 2: Trying direct HTML scraping method...');
                 
-                const downloadStream = await downloadYouTubeViaAPIv3(url, quality, format);
-                console.log('✅ SUCCESS: YouTube Data API v3 method succeeded');
+                const downloadStream = await downloadYouTubeViaHTMLScraping(url, quality, format);
+                console.log('✅ SUCCESS: HTML scraping method succeeded');
                 return downloadStream;
                 
-            } catch (apiError) {
-                console.log('❌ STEP 2 FAILED: YouTube Data API v3 method failed');
-                console.log('🔄 FALLBACK: Moving to alternative HTTP method...');
+            } catch (htmlError) {
+                console.log('❌ STEP 2 FAILED: HTML scraping method failed');
+                console.log('🔄 FALLBACK: Moving to YouTube Data API v3 method...');
                 
-                // 🥉 STEP 3: Try alternative HTTP method
+                // 🥉 STEP 3: Try YouTube Data API v3 method
                 try {
-                    console.log('🥉 STEP 3: Trying alternative HTTP method...');
+                    console.log('🥉 STEP 3: Trying YouTube Data API v3 method...');
                     
-                    const downloadStream = await downloadYouTubeViaAlternativeHTTP(url, quality, format);
-                    console.log('✅ SUCCESS: Alternative HTTP method succeeded');
+                    const downloadStream = await downloadYouTubeViaAPIv3(url, quality, format);
+                    console.log('✅ SUCCESS: YouTube Data API v3 method succeeded');
                     return downloadStream;
                     
-                } catch (httpError) {
-                    console.log('❌ STEP 3 FAILED: Alternative HTTP method failed');
-                    throw new Error(`All alternative methods failed: HTML scraping, API v3, HTTP method`);
+                } catch (apiError) {
+                    console.log('❌ STEP 3 FAILED: YouTube Data API v3 method failed');
+                    console.log('🔄 FALLBACK: Moving to alternative HTTP method...');
+                    
+                    // 🏁 STEP 4: Try alternative HTTP method
+                    try {
+                        console.log('🏁 STEP 4: Trying alternative HTTP method...');
+                        
+                        const downloadStream = await downloadYouTubeViaAlternativeHTTP(url, quality, format);
+                        console.log('✅ SUCCESS: Alternative HTTP method succeeded');
+                        return downloadStream;
+                        
+                    } catch (httpError) {
+                        console.log('❌ STEP 4 FAILED: Alternative HTTP method failed');
+                        throw new Error(`All alternative methods failed: vredenScraper, HTML scraping, API v3, HTTP method`);
+                    }
                 }
             }
         }
@@ -1750,6 +1766,84 @@ async function downloadYouTube(url, quality, format) {
     }
 }
 
+// NEW: Download YouTube video via vredenScraper (WORKING ALTERNATIVE)
+async function downloadYouTubeViaVredenScraper(url, quality, format) {
+    try {
+        console.log('🚀 === VREDEN SCRAPER DOWNLOAD METHOD STARTED ===');
+        console.log('🔍 vredenScraper method: Starting...');
+        console.log('📝 Input parameters - URL:', url, 'Quality:', quality, 'Format:', format);
+        
+        // Extract video ID from URL
+        console.log('🔍 Extracting video ID from URL...');
+        const videoId = extractYouTubeVideoId(url);
+        if (!videoId) {
+            console.error('❌ Failed to extract video ID from URL:', url);
+            throw new Error('Invalid YouTube URL - could not extract video ID');
+        }
+        
+        console.log('✅ Video ID extracted successfully:', videoId);
+        
+        // Use vredenScraper based on format
+        let result;
+        if (format === 'mp3') {
+            console.log('🎵 Using vredenScraper.ytmp3 for audio download...');
+            result = await vredenScraper.ytmp3(url);
+        } else {
+            console.log('📹 Using vredenScraper.ytmp4 for video download...');
+            result = await vredenScraper.ytmp4(url);
+        }
+        
+        if (!result || !result.status) {
+            throw new Error('vredenScraper failed to get download info');
+        }
+        
+        console.log('✅ vredenScraper succeeded!');
+        console.log('📊 Result structure:', Object.keys(result));
+        
+        if (result.download && result.download.url) {
+            console.log('🔗 Download URL found:', result.download.url.substring(0, 100) + '...');
+            
+            // Download the file using axios
+            console.log('📥 Starting download via axios...');
+            const response = await axios({
+                method: 'GET',
+                url: result.download.url,
+                responseType: 'stream',
+                headers: {
+                    'User-Agent': getRandomUserAgent(),
+                    'Referer': 'https://www.youtube.com/',
+                    'Origin': 'https://www.youtube.com'
+                },
+                timeout: 30000
+            });
+            
+            console.log('✅ Download stream created successfully');
+            console.log('📊 Response headers:', response.headers);
+            
+            // Create a readable stream that can be returned
+            const downloadStream = response.data;
+            
+            // Add metadata to the stream
+            downloadStream.videoInfo = {
+                title: result.download.title || 'Unknown Title',
+                duration: result.download.duration || 'Unknown',
+                quality: result.download.quality || quality,
+                format: format,
+                platform: 'YouTube',
+                method: 'vredenScraper'
+            };
+            
+            return downloadStream;
+            
+        } else {
+            throw new Error('No download URL found in vredenScraper result');
+        }
+        
+    } catch (error) {
+        console.error('❌ vredenScraper download method failed:', error);
+        throw new Error(`vredenScraper method failed: ${error.message}`);
+    }
+}
 
 // Extract video URLs from YouTube page HTML
 function extractVideoUrlsFromPage(html, videoId) {
