@@ -1,9 +1,16 @@
 services:
-  # Main backend service
   - type: web
-    name: video-downloader-backend
+    name: video-downloader-pro-backend
     env: node
-    buildCommand: npm install
+    plan: starter
+    buildCommand: |
+      # Install Node.js dependencies
+      npm install
+      # Install Python dependencies
+      pip install -r requirements.txt
+      # Download yt-dlp (keeping as backup)
+      curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
+      chmod +x yt-dlp
     startCommand: node server.js
     envVars:
       - key: NODE_ENV

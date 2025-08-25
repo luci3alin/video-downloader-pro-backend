@@ -1843,6 +1843,28 @@ async function downloadYouTubeViaBtchDownloader(url, quality, format) {
             }
         }
         
+        // Check if this is a Python file download
+        if (downloadUrl.startsWith('PYTHON_FILE:')) {
+            const filePath = downloadUrl.replace('PYTHON_FILE:', '');
+            console.log('📥 Python file download detected:', filePath);
+            
+            // Create a file stream
+            const fs = require('fs');
+            const downloadStream = fs.createReadStream(filePath);
+            
+            // Add cleanup function to remove the file after streaming
+            downloadStream.on('end', () => {
+                try {
+                    fs.unlinkSync(filePath);
+                    console.log('🧹 Python download file cleaned up');
+                } catch (cleanupError) {
+                    console.log('⚠️ Failed to cleanup Python download file:', cleanupError.message);
+                }
+            });
+            
+            return downloadStream;
+        }
+        
         // Download the file using axios
         console.log('📥 Starting download via axios...');
         const response = await axios({
@@ -1931,6 +1953,18 @@ async function getBetterQualityUrlEnhanced(url, requestedQuality, format) {
             }
         } catch (error) {
             console.log('⚠️ Method 3 failed:', error.message);
+        }
+        
+        // Method 4: Try Python pytubefix integration
+        console.log('🔄 METHOD 4: Trying Python pytubefix integration...');
+        try {
+            const pythonQuality = await getBetterQualityUrlViaPython(url, requestedQuality, format);
+            if (pythonQuality) {
+                console.log('✅ Quality found via Python pytubefix');
+                return pythonQuality;
+            }
+        } catch (error) {
+            console.log('⚠️ Method 4 failed:', error.message);
         }
         
         console.log('❌ All quality selection methods failed');
@@ -3841,6 +3875,172 @@ async function getYouTubeInfo(url) {
     } catch (error) {
         console.error('❌ getYouTubeInfo failed:', error);
         throw new Error(`Failed to get YouTube video info: ${error.message}`);
+    }
+}
+
+// NEW: Function to get better quality URLs via Python pytubefix integration
+async function getBetterQualityUrlViaPython(url, requestedQuality, format) {
+    try {
+        console.log('🔍 === PYTHON PYTUBEFIX QUALITY SELECTION ===');
+        console.log('📝 Requested quality:', requestedQuality, 'Format:', format);
+        
+        // Check if Python and pytubefix are available
+        const { spawn } = require('child_process');
+        
+        // Try to get available qualities first
+        console.log('🔄 Getting available qualities via Python...');
+        const qualitiesProcess = spawn('python', ['youtube_quality.py', url, '--action', 'qualities']);
+        
+        let qualitiesData = '';
+        let qualitiesError = '';
+        
+        qualitiesProcess.stdout.on('data', (data) => {
+            qualitiesData += data.toString();
+        });
+        
+        qualitiesProcess.stderr.on('data', (data) => {
+            qualitiesError += data.toString();
+        });
+        
+        const qualitiesResult = await new Promise((resolve, reject) => {
+            qualitiesProcess.on('close', (code) => {
+                if (code === 0) {
+                    try {
+                        const parsed = JSON.parse(qualitiesData);
+                        resolve(parsed);
+                    } catch (parseError) {
+                        reject(new Error(`Failed to parse Python output: ${parseError.message}`));
+                    }
+                } else {
+                    reject(new Error(`Python process failed with code ${code}: ${qualitiesError}`));
+                }
+            });
+        });
+        
+        if (qualitiesResult.error) {
+            throw new Error(`Python pytubefix error: ${qualitiesResult.error}`);
+        }
+        
+        console.log('✅ Successfully got qualities from Python pytubefix');
+        console.log('📊 Available qualities:', qualitiesResult.qualities.length);
+        
+        // Find the best quality match
+        const bestQuality = findBestQualityFromPython(qualitiesResult.qualities, requestedQuality, format);
+        
+        if (bestQuality) {
+            console.log('✅ Best quality found via Python:', bestQuality.resolution);
+            
+            // If the quality has a direct URL, return it
+            if (bestQuality.url) {
+                console.log('🔗 Direct URL available from Python');
+                return bestQuality.url;
+            }
+            
+            // If no direct URL, try to download via Python and stream back
+            console.log('🔄 No direct URL, attempting download via Python...');
+            return await downloadViaPython(url, bestQuality.resolution, format);
+        }
+        
+        console.log('❌ No suitable quality found via Python');
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Error in Python pytubefix integration:', error);
+        return null;
+    }
+}
+
+// Helper function to find best quality from Python output
+function findBestQualityFromPython(availableQualities, requestedQuality, format) {
+    // Filter by format type
+    let filteredQualities = availableQualities;
+    if (format === 'mp3') {
+        filteredQualities = availableQualities.filter(q => q.type === 'audio');
+    } else {
+        filteredQualities = availableQualities.filter(q => q.type === 'video');
+    }
+    
+    if (filteredQualities.length === 0) {
+        return null;
+    }
+    
+    // Map quality preferences to actual resolutions
+    const qualityMap = {
+        '144p': 144, '240p': 240, '360p': 360, '480p': 480,
+        '720p': 720, '1080p': 1080, '1440p': 1440, '2160p': 2160,
+        '4k': 2160, '8k': 4320
+    };
+    
+    const targetHeight = qualityMap[requestedQuality] || 720;
+    
+    // Find exact match first
+    let exactMatch = filteredQualities.find(q => q.resolution === requestedQuality);
+    if (exactMatch) return exactMatch;
+    
+    // Find closest higher quality
+    let higherQuality = filteredQualities
+        .filter(q => q.resolution !== 'audio_only' && parseInt(q.resolution.replace('p', '')) >= targetHeight)
+        .sort((a, b) => parseInt(a.resolution.replace('p', '')) - parseInt(b.resolution.replace('p', '')))[0];
+    
+    if (higherQuality) return higherQuality;
+    
+    // Find closest lower quality
+    let lowerQuality = filteredQualities
+        .filter(q => q.resolution !== 'audio_only' && parseInt(q.resolution.replace('p', '')) <= targetHeight)
+        .sort((a, b) => parseInt(b.resolution.replace('p', '')) - parseInt(a.resolution.replace('p', '')))[0];
+    
+    return lowerQuality;
+}
+
+// Helper function to download via Python and stream back
+async function downloadViaPython(url, quality, format) {
+    try {
+        console.log('🔄 Downloading via Python pytubefix...');
+        
+        const { spawn } = require('child_process');
+        const downloadProcess = spawn('python', ['youtube_quality.py', url, '--action', 'download', '--quality', quality]);
+        
+        let downloadData = '';
+        let downloadError = '';
+        
+        downloadProcess.stdout.on('data', (data) => {
+            downloadData += data.toString();
+        });
+        
+        downloadProcess.stderr.on('data', (data) => {
+            downloadError += data.toString();
+        });
+        
+        const downloadResult = await new Promise((resolve, reject) => {
+            downloadProcess.on('close', (code) => {
+                if (code === 0) {
+                    try {
+                        const parsed = JSON.parse(downloadData);
+                        resolve(parsed);
+                    } catch (parseError) {
+                        reject(new Error(`Failed to parse Python download output: ${parseError.message}`));
+                    }
+                } else {
+                    reject(new Error(`Python download process failed with code ${code}: ${downloadError}`));
+                }
+            });
+        });
+        
+        if (downloadResult.error) {
+            throw new Error(`Python download error: ${downloadResult.error}`);
+        }
+        
+        if (downloadResult.success) {
+            console.log('✅ Python download successful:', downloadResult.file_path);
+            // Return a special marker that indicates we need to stream from file
+            return `PYTHON_FILE:${downloadResult.file_path}`;
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Error downloading via Python:', error);
+        return null;
     }
 }
 

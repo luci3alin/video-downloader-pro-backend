@@ -1,0 +1,2 @@
+pytubefix==9.4.1
+requests==2.31.0

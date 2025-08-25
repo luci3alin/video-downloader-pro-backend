@@ -34,7 +34,8 @@
     "instagram-url-direct": "^1.0.35",
     "pornhub.js": "^1.0.5",
     "ruhend-scraper": "^9.0.8",
-    "twitter-downloader": "^1.1.8"
+    "twitter-downloader": "^1.1.8",
+    "youtube-dl-exec": "3.0.24"
   },
   "engines": {
     "node": ">=18.0.0"
