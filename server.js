@@ -3889,8 +3889,8 @@ async function getBetterQualityUrlViaPython(url, requestedQuality, format) {
         
         // Try to get available qualities first
         console.log('🔄 Getting available qualities via Python...');
-        console.log('🔍 Python command: python3 youtube_quality.py', url, '--action qualities');
-        const qualitiesProcess = spawn('python3', ['youtube_quality.py', url, '--action', 'qualities']);
+        console.log('🔍 Python command: python youtube_quality.py', url, '--action qualities');
+        const qualitiesProcess = spawn('python', ['youtube_quality.py', url, '--action', 'qualities']);
         
         let qualitiesData = '';
         let qualitiesError = '';
@@ -3999,7 +3999,7 @@ async function downloadViaPython(url, quality, format) {
         console.log('🔄 Downloading via Python pytubefix...');
         
         const { spawn } = require('child_process');
-        const downloadProcess = spawn('python3', ['youtube_quality.py', url, '--action', 'download', '--quality', quality]);
+        const downloadProcess = spawn('python', ['youtube_quality.py', url, '--action', 'download', '--quality', quality]);
         
         let downloadData = '';
         let downloadError = '';

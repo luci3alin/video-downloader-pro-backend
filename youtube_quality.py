@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 YouTube Quality Selection using pytubefix
 This script provides multiple quality options for YouTube videos
