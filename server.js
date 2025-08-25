@@ -1694,58 +1694,59 @@ async function getYouTubeInfoViaYtDlp(url) {
 // Main YouTube download function - NOW USING MODERN ALTERNATIVES!
 async function downloadYouTube(url, quality, format) {
     try {
-        console.log('📥 DOWNLOAD START -', quality, format, '- MODERN ALTERNATIVES (PRIMARY)');
+        console.log('📥 DOWNLOAD START -', quality, format, '- ALTERNATIVE METHODS ONLY (NO yt-dlp, NO ytdl-core)');
+        console.log('🚀 Attempting download with alternative methods only...');
         
-        // Try modern alternatives in order of preference
-        console.log('🚀 Attempting download with modern alternatives...');
-        
-        // METHOD 1: Try play-dl first (most modern and reliable) - TEMPORARILY DISABLED
-        // try {
-        //     console.log('🥇 STEP 1: Trying play-dl (MODERN PRIMARY)...');
-        //     const downloadStream = await downloadYouTubeViaPlayDl(url, quality, format);
-        //     console.log('✅ SUCCESS: play-dl download completed');
-        //     return downloadStream;
-        // } catch (playDlError) {
-        //     console.log('❌ STEP 1 FAILED: play-dl failed:', playDlError.message);
-        //     console.log('🔄 FALLBACK: Moving to @zulproject/ytdl...');
-        // }
-        
-        // METHOD 2: Try @zulproject/ytdl (alternative scraper) - TEMPORARILY DISABLED
-        // try {
-        //     console.log('🥈 STEP 2: Trying @zulproject/ytdl (ALTERNATIVE SCRAPER)...');
-        //     const downloadStream = await downloadYouTubeViaZulYtdl(url, quality, format);
-        //     console.log('✅ SUCCESS: @zulproject/ytdl download completed');
-        //     return downloadStream;
-        // } catch (zulYtdlError) {
-        //     console.log('❌ STEP 2 FAILED: @zulproject/ytdl failed:', zulYtdlError.message);
-        //     console.log('🔄 FALLBACK: Moving to yt-dlp...');
-        // }
-        
-        // METHOD 3: Fallback to yt-dlp (legacy method)
-        try {
-            console.log('🥉 STEP 3: Trying yt-dlp (LEGACY FALLBACK)...');
-            const downloadStream = await downloadYouTubeViaYtDlp(url, quality, format);
-            console.log('✅ SUCCESS: yt-dlp fallback completed');
-            return downloadStream;
-        } catch (ytDlpError) {
-            console.log('❌ STEP 3 FAILED: yt-dlp failed:', ytDlpError.message);
-            console.log('🔄 FALLBACK: Moving to ytdl-core...');
+        // Extract video ID
+        const videoId = extractYouTubeVideoId(url);
+        if (!videoId) {
+            throw new Error('Invalid YouTube URL');
         }
         
-        // METHOD 4: Final fallback to ytdl-core
+        console.log('🔍 Video ID extracted:', videoId);
+        
+        // 🥇 STEP 1: Try direct HTML scraping method
         try {
-            console.log('🏁 STEP 4: Trying ytdl-core (FINAL FALLBACK)...');
-            const downloadStream = await downloadYouTubeViaYtdlCore(url, quality, format);
-            console.log('✅ SUCCESS: ytdl-core final fallback completed');
+            console.log('🥇 STEP 1: Trying direct HTML scraping method...');
+            
+            const downloadStream = await downloadYouTubeViaHTMLScraping(url, quality, format);
+            console.log('✅ SUCCESS: HTML scraping method succeeded');
             return downloadStream;
-        } catch (ytdlCoreError) {
-            console.log('❌ STEP 4 FAILED: ytdl-core failed:', ytdlCoreError.message);
-            throw new Error('All modern alternatives failed. Please try again later.');
+            
+        } catch (htmlError) {
+            console.log('❌ STEP 1 FAILED: HTML scraping method failed');
+            console.log('🔄 FALLBACK: Moving to YouTube Data API v3 method...');
+            
+            // 🥈 STEP 2: Try YouTube Data API v3 method
+            try {
+                console.log('🥈 STEP 2: Trying YouTube Data API v3 method...');
+                
+                const downloadStream = await downloadYouTubeViaAPIv3(url, quality, format);
+                console.log('✅ SUCCESS: YouTube Data API v3 method succeeded');
+                return downloadStream;
+                
+            } catch (apiError) {
+                console.log('❌ STEP 2 FAILED: YouTube Data API v3 method failed');
+                console.log('🔄 FALLBACK: Moving to alternative HTTP method...');
+                
+                // 🥉 STEP 3: Try alternative HTTP method
+                try {
+                    console.log('🥉 STEP 3: Trying alternative HTTP method...');
+                    
+                    const downloadStream = await downloadYouTubeViaAlternativeHTTP(url, quality, format);
+                    console.log('✅ SUCCESS: Alternative HTTP method succeeded');
+                    return downloadStream;
+                    
+                } catch (httpError) {
+                    console.log('❌ STEP 3 FAILED: Alternative HTTP method failed');
+                    throw new Error(`All alternative methods failed: HTML scraping, API v3, HTTP method`);
+                }
+            }
         }
         
     } catch (error) {
-        console.error('❌ Modern alternatives download failed:', error);
-        throw new Error(`Failed to download YouTube video with modern alternatives: ${error.message}`);
+        console.error('❌ downloadYouTube failed:', error);
+        throw new Error(`Failed to download YouTube video: ${error.message}`);
     }
 }
 
