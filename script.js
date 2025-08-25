@@ -307,7 +307,7 @@ class VideoDownloader {
     async analyzeVideo(url) {
         try {
             // Call real backend API
-            const response = await fetch('/api/video-info', {
+            const response = await fetch('https://video-downloader-pro-backend.onrender.com/api/video-info', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1264,7 +1264,7 @@ class VideoDownloader {
                 progressBar.style.backgroundColor = '#FF9800';
             }
             
-            const response = await fetch('/api/download-playlist', {
+            const response = await fetch('https://video-downloader-pro-backend.onrender.com/api/download-playlist', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1344,17 +1344,17 @@ class VideoDownloader {
             const format = this.currentPlaylistFormat || 'mp3';
             const quality = format === 'mp4' ? '720p' : 'highestaudio';
             
-            const response = await fetch('/api/download', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    url: url,
-                    quality: quality,
-                    format: format
-                })
-            });
+                    const response = await fetch('https://video-downloader-pro-backend.onrender.com/api/download', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: url,
+                quality: quality,
+                format: format
+            })
+        });
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -1795,7 +1795,7 @@ class VideoDownloader {
             console.log('📋 Detected format:', format);
             
             // Upload to server
-            const response = await fetch('/api/upload-cookies', {
+            const response = await fetch('https://video-downloader-pro-backend.onrender.com/api/upload-cookies', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
