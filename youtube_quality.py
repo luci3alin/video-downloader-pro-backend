@@ -8,31 +8,46 @@ import sys
 import json
 import argparse
 import os
-import signal
+import threading
+import time
 from pytubefix import YouTube
 from pytubefix.exceptions import VideoUnavailable, RegexMatchError
 
 # Set a timeout for operations
 TIMEOUT_SECONDS = 30
 
-def timeout_handler(signum, frame):
-    """Handle timeout signal"""
-    print("DEBUG: Operation timed out", file=sys.stderr)
-    sys.exit(1)
+def timeout_wrapper(func, *args, **kwargs):
+    """Wrapper function that adds timeout functionality"""
+    result = [None]
+    exception = [None]
+    
+    def target():
+        try:
+            result[0] = func(*args, **kwargs)
+        except Exception as e:
+            exception[0] = e
+    
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout=TIMEOUT_SECONDS)
+    
+    if thread.is_alive():
+        print("DEBUG: Operation timed out", file=sys.stderr)
+        return {'error': 'Operation timed out after 30 seconds'}
+    
+    if exception[0]:
+        raise exception[0]
+    
+    return result[0]
 
 def get_video_qualities(url):
     """Get available video qualities for a YouTube video"""
     try:
-        # Set timeout
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(TIMEOUT_SECONDS)
-        
         print(f"DEBUG: Creating YouTube object for URL: {url}", file=sys.stderr)
+        
         # Use po_token to avoid bot detection, but without OAuth (which hangs on servers)
         yt = YouTube(url, use_po_token=True)
-        
-        # Cancel timeout after successful creation
-        signal.alarm(0)
         
         print(f"DEBUG: YouTube object created successfully", file=sys.stderr)
         print(f"DEBUG: Video title: {yt.title}", file=sys.stderr)
@@ -93,24 +108,14 @@ def get_video_qualities(url):
     except Exception as e:
         print(f"DEBUG: Unexpected error: {e}", file=sys.stderr)
         return {'error': f'Unexpected error: {str(e)}'}
-    finally:
-        # Always cancel timeout
-        signal.alarm(0)
 
 def download_video(url, quality, output_dir=None):
     """Download a YouTube video at specified quality"""
     try:
-        # Set timeout
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(TIMEOUT_SECONDS)
-        
         print(f"DEBUG: Starting download for URL: {url} with quality: {quality}", file=sys.stderr)
         
         # Use po_token to avoid bot detection, but without OAuth
         yt = YouTube(url, use_po_token=True)
-        
-        # Cancel timeout after successful creation
-        signal.alarm(0)
         
         print(f"DEBUG: YouTube object created for download", file=sys.stderr)
         
@@ -188,9 +193,6 @@ def download_video(url, quality, output_dir=None):
     except Exception as e:
         print(f"DEBUG: Unexpected error during download: {e}", file=sys.stderr)
         return {'error': f'Unexpected error: {str(e)}'}
-    finally:
-        # Always cancel timeout
-        signal.alarm(0)
 
 def main():
     # Add debugging

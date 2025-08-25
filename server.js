@@ -2064,12 +2064,54 @@ async function constructQualityUrl(url, quality, format) {
     return null;
 }
 
-// Helper function to get quality from API (placeholder)
+// Helper function to get quality from API using YouTube Data API v3
 async function getQualityFromAPI(url, quality) {
-    // This is a placeholder - could be implemented with YouTube Data API v3
-    // but would require API keys and may not provide direct download URLs
-    console.log('⚠️ API quality method not implemented (requires API keys)');
-    return null;
+    try {
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        if (!apiKey) {
+            console.log('⚠️ No YouTube API key configured');
+            return null;
+        }
+
+        // Extract video ID from URL
+        const videoId = extractVideoId(url);
+        if (!videoId) {
+            console.log('⚠️ Could not extract video ID from URL');
+            return null;
+        }
+
+        console.log(`🔑 Using YouTube Data API v3 for video: ${videoId}`);
+        
+        // Get video details from YouTube API
+        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${apiKey}`;
+        const response = await axios.get(apiUrl, { timeout: 10000 });
+        
+        if (!response.data.items || response.data.items.length === 0) {
+            console.log('⚠️ Video not found in YouTube API');
+            return null;
+        }
+
+        const videoInfo = response.data.items[0];
+        console.log(`📺 Video found: ${videoInfo.snippet.title}`);
+        
+        // Get available formats using pytubefix (this will give us actual download URLs)
+        const pythonResult = await getBetterQualityUrlViaPython(url, quality, 'mp4');
+        if (pythonResult && !pythonResult.startsWith('PYTHON_FILE:')) {
+            console.log('✅ Python pytubefix provided direct URL');
+            return pythonResult;
+        }
+
+        // If Python method failed, try to construct a better quality URL
+        // This is a fallback approach
+        console.log('🔄 Attempting to construct quality-specific URL...');
+        
+        // For now, return null to let other methods try
+        return null;
+        
+    } catch (error) {
+        console.log('⚠️ YouTube API method failed:', error.message);
+        return null;
+    }
 }
 
 // Helper function to determine actual quality from URL
