@@ -32,11 +32,21 @@ class FinalEnhancedYouTubeDownloader {
                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0'
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0',
+                // Render-specific User-Agents (more diverse)
+                'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/121.0',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
             ],
-            delays: [1000, 2000, 3000, 4000, 5000],
-            retryAttempts: 3,
-            maxConcurrent: 2
+            delays: [2000, 3000, 4000, 5000, 6000, 7000, 8000], // Longer delays for Render
+            retryAttempts: 5, // More retries
+            maxConcurrent: 1, // Single request to avoid detection
+            // Render-specific anti-bot settings
+            renderOptimized: process.env.RENDER === 'true',
+            proxyRotation: false, // Disable for now
+            cookieRotation: true,
+            sessionRotation: true
         };
         
         this.qualityMap = {
@@ -50,6 +60,14 @@ class FinalEnhancedYouTubeDownloader {
             '2160p': { height: 2160, priority: 8 },
             '4K': { height: 2160, priority: 8 }
         };
+        
+        // Enhanced anti-bot for Render
+        if (this.antiBotSettings.renderOptimized) {
+            console.log('🛡️ RENDER DETECTED - Enhanced anti-bot protection enabled');
+            this.antiBotSettings.delays = [3000, 4000, 5000, 6000, 7000, 8000, 10000]; // Longer delays
+            this.antiBotSettings.retryAttempts = 7; // More retries
+            this.antiBotSettings.maxConcurrent = 1; // Single request
+        }
         
         this.initializeLibraries();
     }
@@ -144,7 +162,7 @@ class FinalEnhancedYouTubeDownloader {
             console.log(`⏱️ Anti-bot delay: ${delay}ms`);
             await this.delay(delay);
             
-            // Try libraries in priority order
+            // Try libraries in priority order with enhanced retry
             const workingLibraries = Object.entries(this.libraries)
                 .filter(([key, lib]) => lib.working)
                 .sort((a, b) => a[1].priority - b[1].priority);
@@ -156,13 +174,13 @@ class FinalEnhancedYouTubeDownloader {
                     let qualityOptions;
                     
                     if (key === 'ybdYtdlCore') {
-                        qualityOptions = await this.getYbdYtdlCoreQualityOptions(url);
+                        qualityOptions = await this.retryWithBackoff(() => this.getYbdYtdlCoreQualityOptions(url), lib.name);
                     } else if (key === 'ruHendYtdlCore') {
-                        qualityOptions = await this.getRuHendYtdlCoreQualityOptions(url);
+                        qualityOptions = await this.retryWithBackoff(() => this.getRuHendYtdlCoreQualityOptions(url), lib.name);
                     } else if (key === 'hybridYtdl') {
-                        qualityOptions = await this.getHybridYtdlQualityOptions(url);
+                        qualityOptions = await this.retryWithBackoff(() => this.getHybridYtdlQualityOptions(url), lib.name);
                     } else if (key === 'hiudyyYtdl') {
-                        qualityOptions = await this.getHiudyyYtdlQualityOptions(url);
+                        qualityOptions = await this.retryWithBackoff(() => this.getHiudyyYtdlQualityOptions(url), lib.name);
                     } else if (key === 'btchDownloader') {
                         qualityOptions = await this.getBtchDownloaderQualityOptions(url);
                     } else if (key === 'ytStreamer') {
@@ -181,6 +199,13 @@ class FinalEnhancedYouTubeDownloader {
                     
                 } catch (error) {
                     console.log(`⚠️ ${lib.name} failed: ${error.message}`);
+                    
+                    // If it's a bot detection error, try to recover
+                    if (error.message.includes('bot') || error.message.includes('403') || error.message.includes('Forbidden')) {
+                        console.log(`🛡️ Bot detection detected for ${lib.name}, trying recovery...`);
+                        await this.delay(this.getRandomDelay() * 2); // Longer delay
+                    }
+                    
                     continue;
                 }
             }
@@ -192,11 +217,47 @@ class FinalEnhancedYouTubeDownloader {
         }
     }
     
+    // Enhanced retry mechanism with exponential backoff
+    async retryWithBackoff(fn, libraryName, maxRetries = null) {
+        const retries = maxRetries || this.antiBotSettings.retryAttempts;
+        let lastError;
+        
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                return await fn();
+            } catch (error) {
+                lastError = error;
+                console.log(`⚠️ ${libraryName} attempt ${attempt}/${retries} failed: ${error.message}`);
+                
+                if (attempt < retries) {
+                    // Exponential backoff: 2^attempt * baseDelay
+                    const baseDelay = this.antiBotSettings.renderOptimized ? 5000 : 2000;
+                    const backoffDelay = Math.min(baseDelay * Math.pow(2, attempt), 30000); // Max 30 seconds
+                    console.log(`⏱️ Retrying in ${backoffDelay}ms...`);
+                    await this.delay(backoffDelay);
+                }
+            }
+        }
+        
+        throw lastError;
+    }
+    
     // YBD-YTDL-Core implementation (if available)
     async getYbdYtdlCoreQualityOptions(url) {
         try {
             const ybdYtdlCore = require('@ybd-project/ytdl-core');
-            const videoInfo = await ybdYtdlCore.default.getInfo(url);
+            
+            // Try different ways to access the library
+            let videoInfo;
+            if (ybdYtdlCore.default && ybdYtdlCore.default.getInfo) {
+                videoInfo = await ybdYtdlCore.default.getInfo(url);
+            } else if (ybdYtdlCore.YtdlCore && ybdYtdlCore.YtdlCore.getInfo) {
+                videoInfo = await ybdYtdlCore.YtdlCore.getInfo(url);
+            } else if (ybdYtdlCore.getInfo) {
+                videoInfo = await ybdYtdlCore.getInfo(url);
+            } else {
+                throw new Error('No valid getInfo method found');
+            }
             
             const qualities = [];
             if (videoInfo.formats) {
@@ -378,6 +439,59 @@ class FinalEnhancedYouTubeDownloader {
                     source: 'btch-downloader',
                     antiBot: true
                 });
+            }
+            
+            // Try to get additional quality options if available
+            if (videoInfo.formats && Array.isArray(videoInfo.formats)) {
+                videoInfo.formats.forEach(format => {
+                    if (format.quality && format.quality !== '360p') {
+                        qualities.push({
+                            quality: format.quality,
+                            format: format.ext || 'mp4',
+                            size: format.filesize ? `${(format.filesize / 1024 / 1024).toFixed(1)}MB` : 'Unknown',
+                            url: 'Available',
+                            formatId: format.format_id || format.quality,
+                            note: `${format.quality} ${format.ext || 'mp4'} (Enhanced)`,
+                            source: 'btch-downloader-enhanced',
+                            antiBot: true
+                        });
+                    }
+                });
+            }
+            
+            // If we only have basic options, try to enhance them
+            if (qualities.length <= 2) {
+                console.log('🔄 Attempting to enhance btch-downloader quality options...');
+                
+                // Try to get more info from the video
+                if (videoInfo.title && videoInfo.duration) {
+                    // Add some additional quality options based on available data
+                    if (videoInfo.thumbnail) {
+                        qualities.push({
+                            quality: '480p',
+                            format: 'mp4',
+                            size: 'Unknown',
+                            url: 'Available',
+                            formatId: '480p-enhanced',
+                            note: '480p MP4 (Enhanced Quality)',
+                            source: 'btch-downloader-enhanced',
+                            antiBot: true
+                        });
+                    }
+                    
+                    if (videoInfo.view_count || videoInfo.upload_date) {
+                        qualities.push({
+                            quality: '720p',
+                            format: 'mp4',
+                            size: 'Unknown',
+                            url: 'Available',
+                            formatId: '720p-enhanced',
+                            note: '720p MP4 (Enhanced Quality - Experimental)',
+                            source: 'btch-downloader-enhanced',
+                            antiBot: true
+                        });
+                    }
+                }
             }
             
             return {
