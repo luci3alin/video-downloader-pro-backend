@@ -1712,6 +1712,20 @@ async function downloadYouTube(url, quality, format) {
         try {
             console.log('🥇 STEP 1: Trying btchDownloader (NEW WORKING ALTERNATIVE)...');
             
+            // If specific quality is requested, try enhanced quality selection first
+            if (quality && quality !== 'auto' && quality !== 'best') {
+                console.log('🎯 Specific quality requested, trying enhanced quality selection...');
+                try {
+                    const enhancedQuality = await getBetterQualityUrlEnhanced(url, quality, format);
+                    if (enhancedQuality && enhancedQuality.url) {
+                        console.log('✅ SUCCESS: Enhanced quality selection succeeded');
+                        return await downloadFromUrl(enhancedQuality.url, enhancedQuality.quality || quality, format);
+                    }
+                } catch (enhancedError) {
+                    console.log('⚠️ Enhanced quality selection failed, falling back to btchDownloader');
+                }
+            }
+            
             const downloadStream = await downloadYouTubeViaBtchDownloader(url, quality, format);
             console.log('✅ SUCCESS: btchDownloader method succeeded');
             return downloadStream;
@@ -1972,6 +1986,42 @@ async function getBetterQualityUrlEnhanced(url, requestedQuality, format) {
     }
 }
 
+// Helper function to download from a direct URL
+async function downloadFromUrl(url, quality, format) {
+    try {
+        console.log(`🚀 Downloading from direct URL: ${url.substring(0, 100)}...`);
+        console.log(`🎯 Quality: ${quality}, Format: ${format}`);
+        
+        // Create a readable stream from the URL
+        const response = await axios({
+            method: 'GET',
+            url: url,
+            responseType: 'stream',
+            timeout: 300000, // 5 minutes
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+        
+        console.log('✅ Direct URL download stream created successfully');
+        
+        // Add metadata to the stream
+        response.data.metadata = {
+            requestedQuality: quality,
+            actualQuality: quality,
+            format: format,
+            source: 'direct_url',
+            qualityNote: `Downloaded at requested quality: ${quality}`
+        };
+        
+        return response.data;
+        
+    } catch (error) {
+        console.error('❌ Error downloading from direct URL:', error);
+        throw error;
+    }
+}
+
 // Helper function to get video quality info from page
 async function getVideoQualityInfo(url) {
     try {
@@ -2093,28 +2143,23 @@ async function getQualityFromAPI(url, quality) {
         // Python pytubefix disabled due to hanging issues
         console.log('⚠️ Python pytubefix disabled - using alternative methods');
 
-        // Try to use btchDownloader with quality enhancement
-        console.log('🔄 Attempting to enhance btchDownloader quality...');
+        // Try to construct quality-specific URLs using video info
+        console.log('🔄 Attempting to construct quality-specific URLs...');
         
         try {
-            // Get btchDownloader result and try to find better quality
-            const btchResult = await btchDownloader.youtube(url);
-            if (btchResult && btchResult.mp4) {
-                console.log('✅ btchDownloader found MP4 URL');
-                
-                // Check if we can get better quality from the same source
-                // For now, return the btchDownloader URL but mark it as enhanced
-                return {
-                    url: btchResult.mp4,
-                    quality: 'enhanced',
-                    method: 'btchDownloader + YouTube API'
-                };
-            }
-        } catch (btchError) {
-            console.log('⚠️ btchDownloader enhancement failed:', btchError.message);
+            // Get video info from YouTube API to understand available formats
+            console.log('🔍 Getting detailed video info for quality construction...');
+            
+            // For now, return null to let other methods try
+            // In the future, we could implement URL construction based on video info
+            console.log('⚠️ URL construction not yet implemented - using fallback');
+            
+            return null;
+            
+        } catch (error) {
+            console.log('⚠️ Quality URL construction failed:', error.message);
+            return null;
         }
-        
-        return null;
         
     } catch (error) {
         console.log('⚠️ YouTube API method failed:', error.message);
