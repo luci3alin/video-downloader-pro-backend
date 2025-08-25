@@ -2074,7 +2074,7 @@ async function getQualityFromAPI(url, quality) {
         }
 
         // Extract video ID from URL
-        const videoId = extractVideoId(url);
+        const videoId = extractYouTubeVideoId(url);
         if (!videoId) {
             console.log('⚠️ Could not extract video ID from URL');
             return null;

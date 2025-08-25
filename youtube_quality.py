@@ -8,46 +8,16 @@ import sys
 import json
 import argparse
 import os
-import threading
-import time
 from pytubefix import YouTube
 from pytubefix.exceptions import VideoUnavailable, RegexMatchError
-
-# Set a timeout for operations
-TIMEOUT_SECONDS = 30
-
-def timeout_wrapper(func, *args, **kwargs):
-    """Wrapper function that adds timeout functionality"""
-    result = [None]
-    exception = [None]
-    
-    def target():
-        try:
-            result[0] = func(*args, **kwargs)
-        except Exception as e:
-            exception[0] = e
-    
-    thread = threading.Thread(target=target)
-    thread.daemon = True
-    thread.start()
-    thread.join(timeout=TIMEOUT_SECONDS)
-    
-    if thread.is_alive():
-        print("DEBUG: Operation timed out", file=sys.stderr)
-        return {'error': 'Operation timed out after 30 seconds'}
-    
-    if exception[0]:
-        raise exception[0]
-    
-    return result[0]
 
 def get_video_qualities(url):
     """Get available video qualities for a YouTube video"""
     try:
         print(f"DEBUG: Creating YouTube object for URL: {url}", file=sys.stderr)
         
-        # Use po_token to avoid bot detection, but without OAuth (which hangs on servers)
-        yt = YouTube(url, use_po_token=True)
+        # Simple approach without complex options
+        yt = YouTube(url)
         
         print(f"DEBUG: YouTube object created successfully", file=sys.stderr)
         print(f"DEBUG: Video title: {yt.title}", file=sys.stderr)
@@ -114,8 +84,8 @@ def download_video(url, quality, output_dir=None):
     try:
         print(f"DEBUG: Starting download for URL: {url} with quality: {quality}", file=sys.stderr)
         
-        # Use po_token to avoid bot detection, but without OAuth
-        yt = YouTube(url, use_po_token=True)
+        # Simple approach without complex options
+        yt = YouTube(url)
         
         print(f"DEBUG: YouTube object created for download", file=sys.stderr)
         
