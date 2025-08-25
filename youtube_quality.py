@@ -120,32 +120,38 @@ def download_video(url, quality, output_path=None):
         return {'error': str(e)}
 
 def main():
+    # Add debugging
+    print(f"DEBUG: Python script started with args: {sys.argv}", file=sys.stderr)
+    print(f"DEBUG: Python version: {sys.version}", file=sys.stderr)
+    
     parser = argparse.ArgumentParser(description='YouTube Quality Selection and Download')
     parser.add_argument('url', help='YouTube video URL')
     parser.add_argument('--action', choices=['qualities', 'download'], default='qualities',
-                       help='Action to perform: get qualities or download')
+                        help='Action to perform: get qualities or download')
     parser.add_argument('--quality', help='Quality for download (e.g., 720p, 1080p, highest, lowest, audio)')
     parser.add_argument('--output', help='Output directory for download')
-    
+
     args = parser.parse_args()
     
-    if args.action == 'qualities':
-        # Get available qualities
-        result = get_video_qualities(args.url)
-        print(json.dumps(result, indent=2))
-        
-    elif args.action == 'download':
-        if not args.quality:
-            print(json.dumps({'error': 'Quality parameter required for download'}, indent=2))
+            if args.action == 'qualities':
+            # Get available qualities
+            print(f"DEBUG: Getting qualities for URL: {args.url}", file=sys.stderr)
+            result = get_video_qualities(args.url)
+            print(json.dumps(result, indent=2))
+
+        elif args.action == 'download':
+            if not args.quality:
+                print(json.dumps({'error': 'Quality parameter required for download'}, indent=2))
+                sys.exit(1)
+
+            # Download video
+            print(f"DEBUG: Downloading with quality: {args.quality} for URL: {args.url}", file=sys.stderr)
+            result = download_video(args.url, args.quality, args.output)
+            print(json.dumps(result, indent=2))
+
+        else:
+            print(json.dumps({'error': 'Invalid action'}, indent=2))
             sys.exit(1)
-        
-        # Download video
-        result = download_video(args.url, args.quality, args.output)
-        print(json.dumps(result, indent=2))
-    
-    else:
-        print(json.dumps({'error': 'Invalid action'}, indent=2))
-        sys.exit(1)
 
 if __name__ == '__main__':
     main()

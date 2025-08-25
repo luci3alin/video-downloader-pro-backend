@@ -1,17 +1,9 @@
 services:
   - type: web
     name: video-downloader-pro-backend
-    env: node
+    env: docker
     plan: starter
-    buildCommand: |
-      # Install Node.js dependencies
-      npm install
-      # Install Python dependencies
-      pip install -r requirements.txt
-      # Download yt-dlp (keeping as backup)
-      curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
-      chmod +x yt-dlp
-    startCommand: node server.js
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
