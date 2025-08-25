@@ -16,8 +16,8 @@ def get_video_qualities(url):
     try:
         print(f"DEBUG: Creating YouTube object for URL: {url}", file=sys.stderr)
         
-        # Simple approach without complex options
-        yt = YouTube(url)
+        # Use po_token to avoid bot detection
+        yt = YouTube(url, use_po_token=True)
         
         print(f"DEBUG: YouTube object created successfully", file=sys.stderr)
         print(f"DEBUG: Video title: {yt.title}", file=sys.stderr)
@@ -84,8 +84,8 @@ def download_video(url, quality, output_dir=None):
     try:
         print(f"DEBUG: Starting download for URL: {url} with quality: {quality}", file=sys.stderr)
         
-        # Simple approach without complex options
-        yt = YouTube(url)
+        # Use po_token to avoid bot detection
+        yt = YouTube(url, use_po_token=True)
         
         print(f"DEBUG: YouTube object created for download", file=sys.stderr)
         
