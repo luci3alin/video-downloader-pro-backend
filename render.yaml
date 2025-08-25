@@ -12,8 +12,10 @@ services:
         value: 10000
       - key: YOUTUBE_API_KEY
         sync: false  # Set this manually in Render dashboard
+      - key: PINCHFLAT_URL
+        value: https://pinchflat-service.onrender.com  # Will be set after Pinchflat deploys
     
-  # Pinchflat service (runs alongside backend)
+  # Pinchflat service (runs as separate Docker service)
   - type: web
     name: pinchflat-service
     env: docker
